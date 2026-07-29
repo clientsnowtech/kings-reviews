@@ -8,6 +8,7 @@
     "start": "node node_modules/next/dist/bin/next start -p 3300",
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts",
+    "reinstall": "npm cache clean --force && npm install --no-audit --no-fund",
     "db:push": "node node_modules/prisma/build/index.js db push",
     "db:seed": "prisma db seed",
     "db:reset": "tsx prisma/reset.ts",
