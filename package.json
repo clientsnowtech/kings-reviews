@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3300",
-    "build": "next build",
-    "start": "next start -p 3300",
+    "build": "node node_modules/next/dist/bin/next build",
+    "start": "node node_modules/next/dist/bin/next start -p 3300",
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts",
-    "db:push": "prisma db push",
+    "db:push": "node node_modules/prisma/build/index.js db push",
     "db:seed": "prisma db seed",
     "db:reset": "tsx prisma/reset.ts",
     "db:reseed": "tsx prisma/reset.ts && prisma db seed"
