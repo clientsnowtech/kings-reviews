@@ -1,0 +1,37 @@
+import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
+import { db } from '@/lib/db'
+import { auth } from '@/lib/auth'
+import { BusinessRegisterForm } from '@/components/business-register-form'
+
+export const metadata: Metadata = { title: 'List your business' }
+
+export default async function BusinessRegisterPage() {
+  const session = await auth()
+  if (!session?.user) redirect('/login?next=/business/register')
+
+  const parents = await db.category.findMany({
+    where: { parentId: null },
+    orderBy: { sort: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
+    },
+  })
+  const groups = parents.filter((p) => p.children.length > 0)
+
+  return (
+    <div className="mx-auto px-4 py-10" style={{ maxWidth: '768px' }}>
+      <h1 className="text-3xl font-bold">List your business</h1>
+      <p className="mt-2 text-muted">
+        Add your business to TrustIndex so customers can find and review you. It goes live
+        immediately with an <strong>Unverified</strong> badge until verification.
+      </p>
+
+      <div className="mt-8 rounded-2xl border bg-surface p-6 sm:p-8">
+        <BusinessRegisterForm groups={groups} />
+      </div>
+    </div>
+  )
+}

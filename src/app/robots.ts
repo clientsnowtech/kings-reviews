@@ -1,0 +1,15 @@
+import type { MetadataRoute } from 'next'
+
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      // badge images are hotlinked from customer sites, so they stay crawlable
+      allow: ['/', '/api/badge/'],
+      disallow: ['/business/dashboard', '/my/', '/api/', '/embed/', '/login', '/register'],
+    },
+    sitemap: `${BASE}/sitemap.xml`,
+  }
+}

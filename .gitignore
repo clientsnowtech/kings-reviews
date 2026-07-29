@@ -30,8 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# user uploads
+/public/uploads
+
 # env files (can opt-in for committing if needed)
 .env*
+# the deploy template holds placeholders only, so it is safe to track
+!.env.production.example
 
 # vercel
 .vercel

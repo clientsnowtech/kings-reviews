@@ -2,25 +2,113 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --surface: #ffffff;
+  --foreground: #0f1b17;
+  --muted: #5c6b66;
+  --border: #e6ebe8;
+  --brand: #0e7a63;
+  --brand-strong: #0a5b49;
+  --mint: #e7f5ef;
+  --mint-2: #d6ede3;
+  --cream: #fbfaf3;
+  --star: #00b67a;
+  --star-empty: #d7dde0;
+  --danger: #d33a3a;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-mint: var(--mint);
+  --color-mint-2: var(--mint-2);
+  --color-cream: var(--cream);
+  --color-star: var(--star);
+  --color-star-empty: var(--star-empty);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layered so Tailwind text-* utilities (e.g. text-white on active pills)
+   still win — an unlayered `a` rule beats layered utilities in the cascade. */
+@layer base {
+  a {
+    color: inherit;
+  }
+
+  /* every control should feel clickable and answer the press instantly —
+     a server action takes a beat, and a dead-looking button gets clicked twice */
+  button:not(:disabled),
+  [role='button'],
+  summary,
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    cursor: pointer;
+  }
+
+  button:not(:disabled):active,
+  a:active,
+  [role='button']:active {
+    transform: translateY(1px);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+/* premium soft shadow */
+.shadow-soft {
+  box-shadow: 0 1px 2px rgba(16, 40, 34, 0.04), 0 8px 24px rgba(16, 40, 34, 0.06);
+}
+.shadow-float {
+  box-shadow: 0 6px 16px rgba(16, 40, 34, 0.08), 0 18px 48px rgba(16, 40, 34, 0.12);
+}
+
+/* mint→cream hero wash */
+.hero-wash {
+  background:
+    radial-gradient(1200px 500px at 85% -10%, var(--mint-2) 0%, transparent 55%),
+    linear-gradient(180deg, var(--mint) 0%, var(--cream) 60%, #ffffff 100%);
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-floaty { animation: floaty 5s ease-in-out infinite; }
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
