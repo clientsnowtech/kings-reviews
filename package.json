@@ -8,6 +8,7 @@
     "start": "next start -p 3300",
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts",
+    "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:reset": "tsx prisma/reset.ts",
     "db:reseed": "tsx prisma/reset.ts && prisma db seed"
