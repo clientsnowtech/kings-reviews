@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus, ExternalLink, Pencil, MessageSquareText } from 'lucide-react'
 import { db } from '@/lib/db'
-import { requireUser } from '@/lib/business'
+import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
 
 export const dynamic = 'force-dynamic'
@@ -14,10 +14,10 @@ const STATUS: Record<string, string> = {
 }
 
 export default async function BusinessesPage() {
-  const session = await requireUser()
+  const { ownerId } = await requireOwner()
 
   const businesses = await db.business.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId },
     orderBy: { createdAt: 'desc' },
     include: { category: { select: { name: true } } },
   })

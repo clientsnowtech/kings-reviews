@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { TrendingUp, Star, MessageSquare } from 'lucide-react'
 import { db } from '@/lib/db'
-import { requireUser } from '@/lib/business'
+import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
 
 export const dynamic = 'force-dynamic'
@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic'
 const DAY = 24 * 60 * 60 * 1000
 
 export default async function AnalyticsPage() {
-  const session = await requireUser()
+  const { ownerId } = await requireOwner()
 
   const businesses = await db.business.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId },
     select: { id: true, name: true },
   })
   const ids = businesses.map((b) => b.id)

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ExternalLink, Trash2, Search, Pencil, BadgeCheck, Award } from 'lucide-react'
+import { ExternalLink, Trash2, Search, Pencil, BadgeCheck, Award, LogIn } from 'lucide-react'
 import type { Prisma, BusinessStatus } from '@prisma/client'
 import { db } from '@/lib/db'
 import { Stars } from '@/components/stars'
@@ -11,6 +11,7 @@ import {
   deleteBusiness,
   bulkBusinessStatus,
   setBadgeEnabled,
+  actAsOwner,
 } from '@/lib/admin-actions'
 import { formatDate } from '@/lib/utils'
 
@@ -184,6 +185,16 @@ export default async function AdminBusinesses({
                 >
                   <Pencil size={13} /> Edit
                 </Link>
+                <form action={actAsOwner}>
+                  <input type="hidden" name="businessId" value={b.id} />
+                  <SubmitButton
+                    title="Open this business's own dashboard as its owner"
+                    pendingLabel="Opening…"
+                    className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted hover:bg-mint"
+                  >
+                    <LogIn size={13} /> Open dashboard
+                  </SubmitButton>
+                </form>
                 <form action={setBadgeEnabled}>
                   <input type="hidden" name="id" value={b.id} />
                   <input type="hidden" name="enabled" value={b.badgeEnabled ? '0' : '1'} />

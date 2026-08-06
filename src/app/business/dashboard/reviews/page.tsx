@@ -1,6 +1,6 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { db } from '@/lib/db'
-import { requireUser } from '@/lib/business'
+import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
 import { ReplyForm } from '@/components/reply-form'
 import { colorFrom, initials, formatDate, cn } from '@/lib/utils'
@@ -13,11 +13,11 @@ export default async function ReviewsPage({
 }: {
   searchParams: Promise<{ b?: string; f?: string }>
 }) {
-  const session = await requireUser()
+  const { ownerId } = await requireOwner()
   const { b, f } = await searchParams
 
   const businesses = await db.business.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId },
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
   })
@@ -54,7 +54,7 @@ export default async function ReviewsPage({
 
   // mark this owner's reviews as seen so the "new" indicator clears
   await db.business.updateMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId },
     data: { reviewsSeenAt: new Date() },
   })
 

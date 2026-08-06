@@ -7,6 +7,7 @@ import type { BusinessStatus, ReviewStatus, ReportStatus, Role } from '@prisma/c
 import { db } from './db'
 import { forgetBadgeBusiness } from './badge-server'
 import { requireAdmin } from './admin'
+import { setActingOwner, clearActingOwner } from './impersonation'
 import { slugify, externalUrl } from './utils'
 
 type Session = Awaited<ReturnType<typeof requireAdmin>>
@@ -127,6 +128,36 @@ export async function adminCreateBusiness(formData: FormData) {
   revalidatePath('/admin/businesses')
   revalidatePath('/admin')
   revalidatePath('/categories')
+  redirect('/admin/businesses')
+}
+
+/**
+ * Open a business's own dashboard as its owner.
+ *
+ * Support work otherwise means asking an owner for their password, or an admin
+ * editing through a second set of screens that drift from what owners see. The
+ * switch is recorded in the audit log because acting as someone else should
+ * never be invisible.
+ */
+export async function actAsOwner(formData: FormData) {
+  const session = await requireAdmin()
+  const businessId = String(formData.get('businessId'))
+
+  const business = await db.business.findUnique({
+    where: { id: businessId },
+    select: { ownerId: true, name: true },
+  })
+  if (!business) return
+
+  await setActingOwner(business.ownerId)
+  await logAudit(session, 'owner.act_as', 'business', businessId, business.name)
+  redirect('/business/dashboard/businesses')
+}
+
+/** Drop back to the admin's own account. */
+export async function stopActingAsOwner() {
+  await requireAdmin()
+  await clearActingOwner()
   redirect('/admin/businesses')
 }
 

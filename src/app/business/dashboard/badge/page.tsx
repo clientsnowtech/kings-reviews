@@ -1,6 +1,6 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { db } from '@/lib/db'
-import { requireUser } from '@/lib/business'
+import { requireOwner } from '@/lib/business'
 import { badgeViewStats } from '@/lib/badge-server'
 import { BadgeStudio } from '@/components/badge-studio'
 
@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
 
 export default async function BadgePage() {
-  const session = await requireUser('/business/dashboard/badge')
+  const { ownerId } = await requireOwner('/business/dashboard/badge')
 
   const rows = await db.business.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId },
     orderBy: [{ status: 'asc' }, { ratingCount: 'desc' }],
     select: {
       id: true,

@@ -5,17 +5,19 @@ import { unlink } from 'fs/promises'
 import path from 'path'
 import { db } from './db'
 import { auth } from './auth'
+import { actingOwnerId } from './impersonation'
 import { saveImages } from './upload'
 
-/** Returns the business only if the signed-in user owns it, else null. */
+/** Returns the business only if the caller owns it (or is acting for its owner). */
 async function ownedBusiness(businessId: string) {
   const session = await auth()
   if (!session?.user) return null
+  const ownerId = (await actingOwnerId(session)) ?? session.user.id
   const biz = await db.business.findUnique({
     where: { id: businessId },
     select: { id: true, ownerId: true, slug: true, verifiedAt: true },
   })
-  if (!biz || biz.ownerId !== session.user.id) return null
+  if (!biz || biz.ownerId !== ownerId) return null
   return biz
 }
 
