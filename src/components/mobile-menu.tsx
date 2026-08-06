@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import type { Role } from '@prisma/client'
@@ -9,6 +9,17 @@ import { signOutAction } from '@/lib/actions'
 export function MobileMenu({ role }: { role: Role | null }) {
   const [open, setOpen] = useState(false)
   const signedIn = role !== null
+
+  // Without this the page keeps scrolling under the open drawer, so closing it
+  // drops you somewhere else on the page.
+  useEffect(() => {
+    if (!open) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [open])
 
   return (
     <div className="md:hidden">
@@ -23,7 +34,9 @@ export function MobileMenu({ role }: { role: Role | null }) {
       {open && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-0 flex h-full w-72 flex-col gap-1 bg-white p-4 shadow-float">
+          {/* Narrow phones cannot fit a fixed 18rem panel beside the backdrop,
+              and a signed-in menu is tall enough to overflow a short screen. */}
+          <div className="absolute right-0 top-0 flex h-full w-72 max-w-[85vw] flex-col gap-1 overflow-y-auto overscroll-contain bg-white p-4 shadow-float">
             <button
               onClick={() => setOpen(false)}
               aria-label="Close menu"
