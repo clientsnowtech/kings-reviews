@@ -11,8 +11,13 @@ APP=/home/trustindexindia/trustindex
 VENV=/home/trustindexindia/nodevenv/trustindex/24
 NPM=/opt/alt/alt-nodejs24/root/usr/lib/node_modules/npm/bin/npm-cli.js
 
+# CloudLinux's activate script reads CL_VIRTUAL_ENV before setting it, which
+# `set -u` treats as fatal — so relax it for exactly that one line.
+set +u
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
+set -u
+
 cd "$APP"
 
 echo "--- pulling"
