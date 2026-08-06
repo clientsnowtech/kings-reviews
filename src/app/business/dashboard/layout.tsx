@@ -52,7 +52,9 @@ export default async function BusinessLayout({
       </div>
 
       <div className="grid gap-6 md:grid-cols-[210px_1fr]">
-        <aside className="md:sticky md:top-20 md:self-start">
+        {/* min-w-0: without it this grid item sizes to the tab strip's full
+            width and pushes the page past the viewport on phones. */}
+        <aside className="min-w-0 md:sticky md:top-20 md:self-start">
           <BusinessSidebar unreplied={unreplied} newReviews={newReviews} />
         </aside>
         <main className="min-w-0">{children}</main>

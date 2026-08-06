@@ -35,7 +35,10 @@ export default async function AdminLayout({
       </div>
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
-        <aside className="md:sticky md:top-20 md:self-start">
+        {/* min-w-0: a grid item defaults to min-width:auto, so the sidebar's
+            scrolling tab strip widens the whole grid past the viewport instead
+            of scrolling inside itself. */}
+        <aside className="min-w-0 md:sticky md:top-20 md:self-start">
           <AdminSidebar openReports={openReports} />
         </aside>
         <main className="min-w-0">{children}</main>
