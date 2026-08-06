@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Search, PencilLine, Building2, ShieldCheck, Star, MapPin, BadgeCheck, ArrowRight, Quote, MessageSquareText, Flag, TrendingUp } from 'lucide-react'
 import { db } from '@/lib/db'
@@ -7,6 +8,51 @@ import { Stars } from '@/components/stars'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
+
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
+
+const TITLE = 'Business Reviews & Ratings in India | TrustIndex India'
+const DESCRIPTION =
+  'Read honest customer reviews and ratings for Indian businesses — restaurants, hotels, shops and services. Compare, verify and write your own review free.'
+
+export const metadata: Metadata = {
+  // `absolute` opts out of the layout's "%s · TrustIndex India" template, which
+  // would otherwise put the brand name in the title twice.
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: APP_URL,
+    siteName: APP_NAME,
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: 'en_IN',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+}
+
+// Tells search engines the site name to display and wires up the sitelinks
+// search box, pointed at the same /search route users get.
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: APP_NAME,
+  url: APP_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${APP_URL}/search?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
 
 export default async function Home() {
   const [categories, topRated, recent, totalBiz, totalReviews, cities] = await Promise.all([
@@ -43,6 +89,11 @@ export default async function Home() {
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+
       {/* ============ HERO ============ */}
       <section className="hero-wash border-b">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 lg:grid-cols-2 lg:py-24">
