@@ -16,7 +16,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 const SESSION_COOKIES = ['__Secure-authjs.session-token', 'authjs.session-token']
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/admin/login')) return NextResponse.next()
   if (SESSION_COOKIES.some((name) => req.cookies.has(name))) return NextResponse.next()
 
