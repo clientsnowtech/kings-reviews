@@ -103,7 +103,7 @@ export default async function CategoriesPage({
                   href={`/category/${c.slug}`}
                   className="flex items-center gap-3 rounded-xl border bg-surface px-4 py-3 shadow-soft transition hover:border-brand hover:text-brand"
                 >
-                  <CategoryIcon name={c.icon} size={16} />
+                  <CategoryIcon name={c.icon} category={c.name} size={16} />
                   <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
                   <span className="shrink-0 text-xs text-muted">{countOf.get(c.id) ?? 0}</span>
                 </Link>

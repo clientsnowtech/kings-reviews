@@ -147,12 +147,22 @@ export default async function Home() {
             {featured && (
               <div className="animate-floaty absolute inset-x-0 top-6 overflow-hidden rounded-3xl border bg-white shadow-float">
                 <div className="relative h-36">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={featured.cover ?? `https://picsum.photos/seed/${featured.slug}-cover/800/300`}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  {featured.cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={featured.cover} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    // A stock photo here showed something unrelated to the business.
+                    <div
+                      className="grid h-full w-full place-items-center"
+                      style={{ background: `linear-gradient(135deg, ${colorFrom(featured.slug)}, var(--brand-strong))` }}
+                    >
+                      <CategoryIcon
+                        category={featured.category?.name}
+                        size={56}
+                        className="text-white/30"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 px-5 pb-5 pt-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -249,14 +259,24 @@ export default async function Home() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((c) => (
             <Link key={c.id} href={`/category/${c.slug}`} className="group overflow-hidden rounded-2xl border bg-surface shadow-soft transition hover:-translate-y-0.5 hover:shadow-float">
-              <div className="relative h-28 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`https://picsum.photos/seed/cat-${c.slug}/600/300`} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              {/* A tinted tile rather than a photo: the stock images were random
+                  (an ocean for "SEO agency"), and no photo set covers 4,000
+                  categories. The colour is derived from the slug, so each one
+                  is distinct but stable. */}
+              <div
+                className="relative h-28 overflow-hidden"
+                style={{ background: `linear-gradient(135deg, ${colorFrom(c.slug)}, var(--brand-strong))` }}
+              >
+                <CategoryIcon
+                  name={c.icon}
+                  category={c.name}
+                  size={96}
+                  className="absolute -bottom-4 -right-3 text-white/20 transition duration-500 group-hover:scale-110"
+                />
                 <span className="absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-xl bg-white/95 text-brand shadow-soft">
-                  <CategoryIcon name={c.icon} size={18} />
+                  <CategoryIcon name={c.icon} category={c.name} size={18} />
                 </span>
-                <span className="absolute bottom-2 left-3 font-semibold text-white drop-shadow">{c.name}</span>
+                <span className="absolute bottom-2 left-3 pr-12 font-semibold text-white drop-shadow">{c.name}</span>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-xs text-muted">{c.listingCount} listings</span>

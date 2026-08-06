@@ -64,7 +64,7 @@ export default async function CategoryPage({
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex items-center gap-4">
         <span className="grid h-14 w-14 place-items-center rounded-xl bg-brand/10 text-brand">
-          <CategoryIcon name={category.icon} size={28} />
+          <CategoryIcon name={category.icon} category={category.name} size={28} />
         </span>
         <div>
           <h1 className="text-3xl font-bold">{category.name}</h1>
