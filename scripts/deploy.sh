@@ -38,10 +38,16 @@ echo "--- building"
 # A build killed mid-flight leaves its lock behind, and every later build then
 # refuses to start with "Another next build process is already running".
 pkill -f "next/dist/bin/next build" 2>/dev/null || true
-rm -f .next/*.lock .next/build.lock
+rm -f .next/*.lock .next/build.lock .next-build/*.lock .next-build/build.lock
+
+# Build into a staging directory: `next build` empties its output first, and
+# the running app serves from that same directory, so building in place took
+# the site's CSS and JS down for the length of every deploy.
+export NEXT_DIST_DIR=.next-build
+rm -rf .next-build
 # Left to itself V8 sizes its heap from the machine's RAM, not the account's
 # LVE cap, so the static-generation worker overshoots and aborts (SIGABRT).
-# Retry once: the abort is a threshold, not a deterministic failure.
+# Retry: the abort is a threshold, not a deterministic failure.
 export NODE_OPTIONS="--max-old-space-size=2048"
 built=0
 for attempt in 1 2 3; do
@@ -51,10 +57,18 @@ for attempt in 1 2 3; do
   fi
   echo "--- build died on attempt $attempt (SIGABRT/SIGSEGV under the memory cap), retrying"
   pkill -f "next/dist/bin/next build" 2>/dev/null || true
-  rm -f .next/*.lock .next/build.lock
+  rm -rf .next-build
   sleep 5
 done
 [ "$built" = 1 ] || { echo "--- build failed three times, leaving the old .next in place"; exit 1; }
+
+echo "--- swapping in the new build"
+# Two renames, so the window where .next is missing is microseconds rather than
+# the whole build. Passenger picks the new one up on restart.
+rm -rf .next-previous
+[ -d .next ] && mv .next .next-previous
+mv .next-build .next
+rm -rf .next-previous
 
 echo "--- restarting"
 mkdir -p tmp

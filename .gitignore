@@ -16,6 +16,9 @@
 # next.js
 /.next/
 /out/
+# deploy staging: the new build lands here, then swaps in with a mv
+/.next-build/
+/.next-previous/
 
 # production
 /build
