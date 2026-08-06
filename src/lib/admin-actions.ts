@@ -53,6 +53,83 @@ export async function setBusinessStatus(formData: FormData) {
   revalidatePath('/admin')
 }
 
+/**
+ * Create a listing from the admin panel.
+ *
+ * Businesses normally register themselves, so a listing always needs an owner.
+ * The admin names one by email: an existing account is reused (and promoted to
+ * BUSINESS), an unknown email gets a passwordless account it can claim through
+ * Google sign-in, and a blank field leaves the listing under the admin.
+ */
+export async function adminCreateBusiness(formData: FormData) {
+  const session = await requireAdmin()
+
+  const str = (key: string) => String(formData.get(key) ?? '').trim()
+  const name = str('name')
+  const categoryId = Number(formData.get('categoryId'))
+  const email = str('email')
+  const phone = str('phone')
+  const city = str('city')
+  const state = str('state')
+  const status = str('status') as BusinessStatus
+
+  if (name.length < 2 || !categoryId || !email || !phone || !city || !state) return
+  if (!['PENDING', 'LIVE'].includes(status)) return
+
+  const ownerEmail = str('ownerEmail').toLowerCase()
+  let ownerId = session.user.id
+  if (ownerEmail) {
+    const existing = await db.user.findUnique({
+      where: { email: ownerEmail },
+      select: { id: true, role: true },
+    })
+    if (existing) {
+      ownerId = existing.id
+      if (existing.role === 'USER') {
+        await db.user.update({ where: { id: existing.id }, data: { role: 'BUSINESS' } })
+      }
+    } else {
+      const created = await db.user.create({
+        data: { email: ownerEmail, role: 'BUSINESS' },
+        select: { id: true },
+      })
+      ownerId = created.id
+    }
+  }
+
+  const base = slugify(name)
+  let slug = base
+  for (let i = 2; await db.business.findUnique({ where: { slug } }); i++) {
+    slug = `${base}-${i}`
+  }
+
+  const business = await db.business.create({
+    data: {
+      ownerId,
+      categoryId,
+      slug,
+      name,
+      email,
+      phone,
+      city,
+      state,
+      website: str('website') || null,
+      description: str('description') || null,
+      // added by an admin, but still not verified — verification has its own queue
+      status,
+    },
+    select: { id: true },
+  })
+
+  await db.category.update({ where: { id: categoryId }, data: { listingCount: { increment: 1 } } })
+
+  await logAudit(session, 'business.create', 'business', business.id, name)
+  revalidatePath('/admin/businesses')
+  revalidatePath('/admin')
+  revalidatePath('/categories')
+  redirect('/admin/businesses')
+}
+
 /** Revoke or restore a business's embeddable badge. */
 export async function setBadgeEnabled(formData: FormData) {
   const session = await requireAdmin()

@@ -59,6 +59,12 @@ export default async function AdminBusinesses({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-bold">Businesses</h2>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/businesses/new"
+            className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong"
+          >
+            Add business
+          </Link>
           <a
             href="/admin/export/businesses"
             className="rounded-lg border px-3 py-1.5 text-sm font-medium text-muted hover:bg-mint"
