@@ -51,6 +51,7 @@ async function getBusiness(slug: string) {
     where: { slug, status: 'LIVE' },
     include: {
       category: { select: { name: true, slug: true } },
+      extraCategories: { orderBy: { name: 'asc' }, select: { name: true, slug: true } },
     },
   })
 }
@@ -285,6 +286,19 @@ export default async function CompanyPage({
               )}
             </div>
             {b.tagline && <p className="mt-1 text-sm text-foreground/80">{b.tagline}</p>}
+
+            {/* Every trade this business is filed under, primary first. */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[b.category, ...b.extraCategories].map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/category/${c.slug}`}
+                  className="rounded-full border bg-surface px-2.5 py-0.5 text-xs font-medium text-muted transition hover:border-brand hover:text-brand"
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
             <address className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm not-italic text-muted">
               <span className="flex items-center gap-1">
                 <MapPin size={14} /> {b.city}, {b.state}

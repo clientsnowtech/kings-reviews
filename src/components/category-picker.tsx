@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Search, X } from 'lucide-react'
 
 export type CategoryOption = { id: number; name: string }
 
@@ -18,13 +18,19 @@ const MAX_VISIBLE = 50
 export function CategoryPicker({
   categories,
   defaultCategoryId,
+  defaultExtraIds,
   error,
   name = 'categoryId',
+  extraName,
 }: {
   categories: CategoryOption[]
   defaultCategoryId?: number
+  /** Ids already listed as secondary categories. */
+  defaultExtraIds?: number[]
   error?: string
   name?: string
+  /** Set to also offer secondary categories, posted under this field name. */
+  extraName?: string
 }) {
   const [selected, setSelected] = useState<CategoryOption | null>(
     () => categories.find((c) => c.id === defaultCategoryId) ?? null,
@@ -143,6 +149,110 @@ export function CategoryPicker({
       )}
 
       {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+
+      {extraName && (
+        <ExtraCategories
+          categories={categories}
+          name={extraName}
+          defaultIds={defaultExtraIds}
+          excludeId={selected?.id}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Secondary categories. A garage that also sells tyres should turn up under
+ * both, so the listing carries as many as apply — the primary one above still
+ * decides the breadcrumb and the badge.
+ */
+function ExtraCategories({
+  categories,
+  name,
+  defaultIds,
+  excludeId,
+}: {
+  categories: CategoryOption[]
+  name: string
+  defaultIds?: number[]
+  excludeId?: number
+}) {
+  const [chosen, setChosen] = useState<CategoryOption[]>(() =>
+    categories.filter((c) => defaultIds?.includes(c.id)),
+  )
+  const [query, setQuery] = useState('')
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    const taken = new Set(chosen.map((c) => c.id))
+    return categories
+      .filter((c) => c.id !== excludeId && !taken.has(c.id) && c.name.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [categories, query, chosen, excludeId])
+
+  return (
+    <div className="mt-4">
+      <label className="mb-1 block text-sm font-medium">
+        Also listed under <span className="font-normal text-muted">(optional)</span>
+      </label>
+
+      {chosen
+        .filter((c) => c.id !== excludeId)
+        .map((c) => (
+          <input key={c.id} type="hidden" name={name} value={c.id} />
+        ))}
+
+      {chosen.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {chosen
+            .filter((c) => c.id !== excludeId)
+            .map((c) => (
+              <span
+                key={c.id}
+                className="inline-flex items-center gap-1 rounded-full bg-mint px-3 py-1 text-sm text-brand"
+              >
+                {c.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${c.name}`}
+                  onClick={() => setChosen((list) => list.filter((x) => x.id !== c.id))}
+                  className="text-brand/70 hover:text-brand"
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+        </div>
+      )}
+
+      <div className="relative">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search to add another category"
+          className="h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand"
+        />
+        {matches.length > 0 && (
+          <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border bg-surface py-1 text-sm shadow-float">
+            {matches.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChosen((list) => [...list, c])
+                    setQuery('')
+                  }}
+                  className="w-full px-3 py-2 text-left hover:bg-mint"
+                >
+                  {c.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

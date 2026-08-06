@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { Prisma } from '@prisma/client'
 import { db } from './db'
 import { auth, signOut } from './auth'
+import { actingOwnerId } from './impersonation'
 import { slugify } from './utils'
 import { saveImages, deleteUploads } from './upload'
 import { rateLimit } from './rate-limit'
@@ -216,7 +217,7 @@ export async function replyToReview(
     include: { business: { select: { id: true, ownerId: true, slug: true } } },
   })
   if (!review) return { error: 'Review not found' }
-  if (review.business.ownerId !== session.user.id)
+  if (review.business.ownerId !== ((await actingOwnerId(session)) ?? session.user.id))
     return { error: 'Only the business owner can reply' }
 
   await db.reviewReply.upsert({
@@ -233,6 +234,18 @@ export async function replyToReview(
 }
 
 // ---------------------------------------------------------------- business
+
+/**
+ * Secondary categories from a form, minus the primary one — a listing filed
+ * twice under the same category would count itself twice.
+ */
+function extraCategoryIds(formData: FormData, primaryId: number): number[] {
+  const ids = formData
+    .getAll('extraCategoryIds')
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n > 0 && n !== primaryId)
+  return [...new Set(ids)]
+}
 
 export async function registerBusiness(
   _prev: ActionState,
@@ -300,6 +313,9 @@ export async function registerBusiness(
       cover: cover ?? null,
       // hybrid: auto-live but unverified until admin/OTP verifies
       status: 'LIVE',
+      extraCategories: {
+        connect: extraCategoryIds(formData, parsed.data.categoryId).map((id) => ({ id })),
+      },
     },
   })
 
@@ -349,7 +365,8 @@ export async function updateBusiness(
     select: { ownerId: true, slug: true, categoryId: true },
   })
   if (!business) return { error: 'Business not found' }
-  if (business.ownerId !== session.user.id) return { error: 'Not your business' }
+  const ownerId = (await actingOwnerId(session)) ?? session.user.id
+  if (business.ownerId !== ownerId) return { error: 'Not your business' }
 
   // optional logo / cover replacement
   const logoFile = formData.get('logo')
@@ -381,6 +398,9 @@ export async function updateBusiness(
       state: parsed.data.state,
       pincode: parsed.data.pincode || null,
       mapUrl: parsed.data.mapUrl || null,
+      extraCategories: {
+        set: extraCategoryIds(formData, parsed.data.categoryId).map((id) => ({ id })),
+      },
       ...(logo ? { logo } : {}),
       ...(cover ? { cover } : {}),
     },

@@ -59,9 +59,11 @@ function Field({
 export function BusinessEditForm({
   business,
   categories,
+  extraCategoryIds,
 }: {
   business: Biz
   categories: CategoryOption[]
+  extraCategoryIds?: number[]
 }) {
   const [state, action, pending] = useActionState(updateBusiness, initial)
   const fe = state.fieldErrors ?? {}
@@ -70,7 +72,13 @@ export function BusinessEditForm({
     <form action={action} className="space-y-5">
       <input type="hidden" name="id" value={business.id} />
 
-      <CategoryPicker categories={categories} defaultCategoryId={business.categoryId} error={fe.categoryId} />
+      <CategoryPicker
+        categories={categories}
+        defaultCategoryId={business.categoryId}
+        defaultExtraIds={extraCategoryIds}
+        error={fe.categoryId}
+        extraName="extraCategoryIds"
+      />
 
       <Field label="Tagline" name="tagline" defaultValue={business.tagline ?? ''} error={fe.tagline} placeholder="Short one-liner shown under your name" />
 

@@ -59,7 +59,12 @@ export default async function Home() {
     // Busiest first, and only ones with something to show — the directory
     // carries Google's full ~4,000 categories, nearly all of them empty.
     db.category.findMany({
-      where: { businesses: { some: { status: 'LIVE' } } },
+      where: {
+        OR: [
+          { businesses: { some: { status: 'LIVE' } } },
+          { extraFor: { some: { status: 'LIVE' } } },
+        ],
+      },
       orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
       take: 8,
     }),

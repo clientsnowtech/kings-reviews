@@ -34,7 +34,7 @@ export default async function AdminNewBusiness() {
           <input name="name" required minLength={2} className={field} />
         </div>
 
-        <CategoryPicker categories={categories} />
+        <CategoryPicker categories={categories} extraName="extraCategoryIds" />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

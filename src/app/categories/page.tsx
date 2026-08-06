@@ -23,10 +23,11 @@ export default async function CategoriesPage({
 
   // Only categories someone has actually listed under: the directory carries
   // Google's full ~4,000, and browsing thousands of empty ones is no browsing.
-  const listed = { businesses: { some: { status: 'LIVE' as const } } }
+  const live = { some: { status: 'LIVE' as const } }
+  const listed = { OR: [{ businesses: live }, { extraFor: live }] }
   const where = query ? { ...listed, name: { contains: query } } : listed
 
-  const [categories, matching, total, counts] = await Promise.all([
+  const [categories, matching, total, businesses] = await Promise.all([
     db.category.findMany({
       where,
       orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
@@ -35,11 +36,21 @@ export default async function CategoriesPage({
     }),
     db.category.count({ where }),
     db.category.count({ where: listed }),
-    db.business.groupBy({ by: ['categoryId'], where: { status: 'LIVE' }, _count: { _all: true } }),
+    // Tallied here rather than with groupBy: a listing counts under every
+    // category it is filed in, and groupBy only sees the primary one.
+    db.business.findMany({
+      where: { status: 'LIVE' },
+      select: { categoryId: true, extraCategories: { select: { id: true } } },
+    }),
   ])
 
-  const countOf = new Map(counts.map((c) => [c.categoryId, c._count._all]))
-  const totalBiz = counts.reduce((n, c) => n + c._count._all, 0)
+  const countOf = new Map<number, number>()
+  for (const b of businesses) {
+    for (const id of [b.categoryId, ...b.extraCategories.map((c) => c.id)]) {
+      countOf.set(id, (countOf.get(id) ?? 0) + 1)
+    }
+  }
+  const totalBiz = businesses.length
 
   return (
     <div>

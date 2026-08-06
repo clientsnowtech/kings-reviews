@@ -52,24 +52,41 @@ export default async function BusinessesPage({
   // Only categories that actually have listings are worth offering as filters —
   // the full list is ~4,000 names, nearly all of them empty.
   const filterCategories = await db.category.findMany({
-    where: { businesses: { some: { status: 'LIVE' } } },
+    where: {
+      OR: [
+        { businesses: { some: { status: 'LIVE' } } },
+        { extraFor: { some: { status: 'LIVE' } } },
+      ],
+    },
     orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
     take: 40,
     select: { id: true, name: true, slug: true },
   })
 
-  let catIds: number[] | undefined
+  let pickedCategoryId: number | undefined
   if (sp.category) {
     const picked = await db.category.findUnique({
       where: { slug: sp.category },
       select: { id: true },
     })
-    if (picked) catIds = [picked.id]
+    pickedCategoryId = picked?.id
   }
 
   const where: Prisma.BusinessWhereInput = {
     status: 'LIVE',
-    ...(catIds ? { categoryId: { in: catIds } } : {}),
+    // A listing can sit in several categories, so match either side.
+    ...(pickedCategoryId
+      ? {
+          AND: [
+            {
+              OR: [
+                { categoryId: pickedCategoryId },
+                { extraCategories: { some: { id: pickedCategoryId } } },
+              ],
+            },
+          ],
+        }
+      : {}),
     ...(sp.city ? { city: sp.city } : {}),
     ...(query
       ? {

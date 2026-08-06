@@ -35,6 +35,15 @@ async function logAudit(
 
 // ---------------------------------------------------------------- businesses
 
+/** Secondary category ids from a form, deduped and minus the primary one. */
+function extraIds(formData: FormData, primaryId: number): number[] {
+  const ids = formData
+    .getAll('extraCategoryIds')
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n > 0 && n !== primaryId)
+  return [...new Set(ids)]
+}
+
 export async function setBusinessStatus(formData: FormData) {
   const session = await requireAdmin()
   const id = String(formData.get('id'))
@@ -118,6 +127,7 @@ export async function adminCreateBusiness(formData: FormData) {
       description: str('description') || null,
       // added by an admin, but still not verified — verification has its own queue
       status,
+      extraCategories: { connect: extraIds(formData, categoryId).map((id) => ({ id })) },
     },
     select: { id: true },
   })
@@ -218,7 +228,17 @@ export async function adminUpdateBusiness(formData: FormData) {
 
   await db.business.update({
     where: { id },
-    data: { name, categoryId, email, phone, website, city, state, description: description || null },
+    data: {
+      name,
+      categoryId,
+      email,
+      phone,
+      website,
+      city,
+      state,
+      description: description || null,
+      extraCategories: { set: extraIds(formData, categoryId).map((cid) => ({ id: cid })) },
+    },
   })
 
   // keep category listing counts correct if it moved

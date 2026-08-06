@@ -40,7 +40,8 @@ export default async function CategoryPage({
   const sortKey = (sort in SORTS ? sort : 'top') as keyof typeof SORTS
 
   const where: Prisma.BusinessWhereInput = {
-    categoryId: category.id,
+    // A business can be filed under several trades; this page is any of them.
+    OR: [{ categoryId: category.id }, { extraCategories: { some: { id: category.id } } }],
     status: 'LIVE',
     ...(city ? { city } : {}),
   }
@@ -53,7 +54,10 @@ export default async function CategoryPage({
       take: 60,
     }),
     db.business.findMany({
-      where: { categoryId: category.id, status: 'LIVE' },
+      where: {
+        OR: [{ categoryId: category.id }, { extraCategories: { some: { id: category.id } } }],
+        status: 'LIVE',
+      },
       distinct: ['city'],
       select: { city: true },
       orderBy: { city: 'asc' },

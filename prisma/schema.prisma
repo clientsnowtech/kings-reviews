@@ -89,6 +89,7 @@ model Category {
   sort         Int     @default(0)
 
   businesses Business[]
+  extraFor   Business[] @relation("BusinessExtraCategories")
 
   @@index([name])
 }
@@ -144,7 +145,10 @@ model Business {
   updatedAt DateTime @updatedAt
 
   owner      User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  // categoryId is the primary one — it decides the breadcrumb and the badge.
+  // extraCategories are the other trades the same business is listed under.
   category   Category        @relation(fields: [categoryId], references: [id])
+  extraCategories Category[] @relation("BusinessExtraCategories")
   hours      BusinessHour[]
   images     BusinessImage[]
   reviews    Review[]

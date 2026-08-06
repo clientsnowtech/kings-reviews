@@ -58,7 +58,7 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
           placeholder="e.g. Authentic North-Indian dining since 2010"
           hint="A short one-liner shown under your name."
         />
-        <CategoryPicker categories={categories} error={fe.categoryId} />
+        <CategoryPicker categories={categories} error={fe.categoryId} extraName="extraCategoryIds" />
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             label="Founded year"

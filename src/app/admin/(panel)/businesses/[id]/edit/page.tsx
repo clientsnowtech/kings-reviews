@@ -16,7 +16,10 @@ export default async function AdminEditBusiness({
 }) {
   const { id } = await params
   const [business, categories] = await Promise.all([
-    db.business.findUnique({ where: { id } }),
+    db.business.findUnique({
+      where: { id },
+      include: { extraCategories: { select: { id: true } } },
+    }),
     db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ])
   if (!business) notFound()
@@ -43,7 +46,12 @@ export default async function AdminEditBusiness({
           <input name="name" defaultValue={business.name} required className={field} />
         </div>
 
-        <CategoryPicker categories={categories} defaultCategoryId={business.categoryId} />
+        <CategoryPicker
+          categories={categories}
+          defaultCategoryId={business.categoryId}
+          defaultExtraIds={business.extraCategories.map((c) => c.id)}
+          extraName="extraCategoryIds"
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

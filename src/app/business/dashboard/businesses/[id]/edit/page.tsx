@@ -42,11 +42,13 @@ export default async function EditBusinessPage({
   const { id } = await params
   const { business } = await requireOwnedBusiness(id)
 
-  const [categories, hours, images] = await Promise.all([
+  const [categories, hours, images, extras] = await Promise.all([
     db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     db.businessHour.findMany({ where: { businessId: id }, orderBy: { day: 'asc' } }),
     db.businessImage.findMany({ where: { businessId: id }, orderBy: { sort: 'asc' } }),
+    db.category.findMany({ where: { extraFor: { some: { id } } }, select: { id: true } }),
   ])
+  const extraCategoryIds = extras.map((c) => c.id)
 
   const meter = completeness({
     logo: business.logo,
@@ -140,6 +142,7 @@ export default async function EditBusinessPage({
           cover: business.cover,
         }}
         categories={categories}
+        extraCategoryIds={extraCategoryIds}
       />
 
       <BusinessHoursForm businessId={business.id} hours={hours} />
