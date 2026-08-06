@@ -317,21 +317,21 @@ async function main() {
     create: { name: 'Admin', email: 'admin@trustindex.in', password: passwordHash, role: 'ADMIN', emailVerified: new Date() },
   })
 
-  // categories — two levels: parent Category → Sub-categories
+  // categories — flat now; the demo taxonomy's groupings survive only as names
   const catMap = new Map<string, number>()
   for (let i = 0; i < TAXONOMY.length; i++) {
     const parent = TAXONOMY[i]
-    const parentRow = await db.category.upsert({
+    await db.category.upsert({
       where: { slug: slugify(parent.name) },
-      update: { icon: parent.icon, sort: i, parentId: null },
+      update: { icon: parent.icon, sort: i },
       create: { name: parent.name, slug: slugify(parent.name), icon: parent.icon, sort: i },
     })
     for (let j = 0; j < parent.children.length; j++) {
       const child = parent.children[j]
       const childRow = await db.category.upsert({
         where: { slug: slugify(child.name) },
-        update: { icon: child.icon, sort: j, parentId: parentRow.id },
-        create: { name: child.name, slug: slugify(child.name), icon: child.icon, sort: j, parentId: parentRow.id },
+        update: { icon: child.icon, sort: j },
+        create: { name: child.name, slug: slugify(child.name), icon: child.icon, sort: j },
       })
       catMap.set(child.name, childRow.id)
     }

@@ -49,17 +49,22 @@ export default async function BusinessesPage({
   const sortKey = (sp.sort && sp.sort in SORTS ? sp.sort : 'top') as keyof typeof SORTS
   const page = Math.max(1, Number(sp.page) || 1)
 
-  // parent categories drive the category filter; picking a parent includes its children
-  const parents = await db.category.findMany({
-    where: { parentId: null },
-    orderBy: { sort: 'asc' },
-    select: { id: true, name: true, slug: true, children: { select: { id: true } } },
+  // Only categories that actually have listings are worth offering as filters —
+  // the full list is ~4,000 names, nearly all of them empty.
+  const filterCategories = await db.category.findMany({
+    where: { businesses: { some: { status: 'LIVE' } } },
+    orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
+    take: 40,
+    select: { id: true, name: true, slug: true },
   })
 
   let catIds: number[] | undefined
   if (sp.category) {
-    const parent = parents.find((p) => p.slug === sp.category)
-    if (parent) catIds = [parent.id, ...parent.children.map((c) => c.id)]
+    const picked = await db.category.findUnique({
+      where: { slug: sp.category },
+      select: { id: true },
+    })
+    if (picked) catIds = [picked.id]
   }
 
   const where: Prisma.BusinessWhereInput = {
@@ -130,7 +135,7 @@ export default async function BusinessesPage({
         >
           All
         </Link>
-        {parents.map((p) => (
+        {filterCategories.map((p) => (
           <Link
             key={p.id}
             href={qs(sp, { category: p.slug, page: '1' })}

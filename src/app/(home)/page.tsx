@@ -56,7 +56,9 @@ const websiteSchema = {
 
 export default async function Home() {
   const [categories, topRated, recent, totalBiz, totalReviews, cities] = await Promise.all([
-    db.category.findMany({ where: { parentId: null }, orderBy: { sort: 'asc' }, take: 8 }),
+    // Busiest first — with ~4,000 flat categories an alphabetical top 8 would
+    // just be whatever starts with a digit.
+    db.category.findMany({ orderBy: [{ listingCount: 'desc' }, { name: 'asc' }], take: 8 }),
     db.business.findMany({
       where: { status: 'LIVE' },
       orderBy: [{ ratingCount: 'desc' }, { ratingAvg: 'desc' }],

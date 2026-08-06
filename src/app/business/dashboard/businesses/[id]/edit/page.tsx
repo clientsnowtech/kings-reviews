@@ -42,20 +42,11 @@ export default async function EditBusinessPage({
   const { id } = await params
   const { business } = await requireOwnedBusiness(id)
 
-  const [parents, hours, images] = await Promise.all([
-    db.category.findMany({
-      where: { parentId: null },
-      orderBy: { sort: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
-      },
-    }),
+  const [categories, hours, images] = await Promise.all([
+    db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     db.businessHour.findMany({ where: { businessId: id }, orderBy: { day: 'asc' } }),
     db.businessImage.findMany({ where: { businessId: id }, orderBy: { sort: 'asc' } }),
   ])
-  const groups = parents.filter((p) => p.children.length > 0)
 
   const meter = completeness({
     logo: business.logo,
@@ -148,7 +139,7 @@ export default async function EditBusinessPage({
           logo: business.logo,
           cover: business.cover,
         }}
-        groups={groups}
+        categories={categories}
       />
 
       <BusinessHoursForm businessId={business.id} hours={hours} />

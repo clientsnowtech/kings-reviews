@@ -10,16 +10,10 @@ export default async function BusinessRegisterPage() {
   const session = await auth()
   if (!session?.user) redirect('/login?next=/business/register')
 
-  const parents = await db.category.findMany({
-    where: { parentId: null },
-    orderBy: { sort: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
-    },
+  const categories = await db.category.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
   })
-  const groups = parents.filter((p) => p.children.length > 0)
 
   return (
     <div className="mx-auto px-4 py-10" style={{ maxWidth: '768px' }}>
@@ -30,7 +24,7 @@ export default async function BusinessRegisterPage() {
       </p>
 
       <div className="mt-8 rounded-2xl border bg-surface p-6 sm:p-8">
-        <BusinessRegisterForm groups={groups} />
+        <BusinessRegisterForm categories={categories} />
       </div>
     </div>
   )

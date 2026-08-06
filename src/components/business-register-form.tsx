@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { registerBusiness, type ActionState } from '@/lib/actions'
-import { CategoryPicker, type CategoryGroup } from './category-picker'
+import { CategoryPicker, type CategoryOption } from './category-picker'
 import { LocationPicker } from './location-picker'
 
 const initial: ActionState = {}
@@ -42,7 +42,7 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
   )
 }
 
-export function BusinessRegisterForm({ groups }: { groups: CategoryGroup[] }) {
+export function BusinessRegisterForm({ categories }: { categories: CategoryOption[] }) {
   const [state, action, pending] = useActionState(registerBusiness, initial)
   const fe = state.fieldErrors ?? {}
 
@@ -58,7 +58,7 @@ export function BusinessRegisterForm({ groups }: { groups: CategoryGroup[] }) {
           placeholder="e.g. Authentic North-Indian dining since 2010"
           hint="A short one-liner shown under your name."
         />
-        <CategoryPicker groups={groups} error={fe.categoryId} />
+        <CategoryPicker categories={categories} error={fe.categoryId} />
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             label="Founded year"

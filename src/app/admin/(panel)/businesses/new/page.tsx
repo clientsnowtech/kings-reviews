@@ -9,16 +9,10 @@ import { LocationPicker } from '@/components/location-picker'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminNewBusiness() {
-  const parents = await db.category.findMany({
-    where: { parentId: null },
-    orderBy: { sort: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
-    },
+  const categories = await db.category.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
   })
-  const groups = parents.filter((p) => p.children.length > 0)
 
   const field = 'h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand'
   const label = 'mb-1 block text-sm font-medium'
@@ -40,7 +34,7 @@ export default async function AdminNewBusiness() {
           <input name="name" required minLength={2} className={field} />
         </div>
 
-        <CategoryPicker groups={groups} />
+        <CategoryPicker categories={categories} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

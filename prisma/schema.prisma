@@ -76,9 +76,11 @@ model VerificationToken {
 
 // ---------------------------------------------------------------- catalog
 
+// Flat by design: the list mirrors Google Business Profile's ~4,000 categories,
+// which are already leaf-level, so a parent/child tree only added a step to
+// every picker without telling anyone anything.
 model Category {
   id           Int     @id @default(autoincrement())
-  parentId     Int?
   name         String
   slug         String  @unique
   icon         String?
@@ -86,11 +88,9 @@ model Category {
   listingCount Int     @default(0)
   sort         Int     @default(0)
 
-  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children   Category[] @relation("CategoryTree")
   businesses Business[]
 
-  @@index([parentId])
+  @@index([name])
 }
 
 enum BusinessStatus {

@@ -14,6 +14,7 @@
     "reinstall:app": "npm install --no-audit --no-fund --prefix .",
     "reinstall:nested": "npm install --no-audit --no-fund --prefix . --install-strategy=nested",
     "db:push": "node node_modules/prisma/build/index.js db push",
+    "db:categories": "tsx prisma/import-categories.ts",
     "db:seed": "prisma db seed",
     "db:reset": "tsx prisma/reset.ts",
     "db:reseed": "tsx prisma/reset.ts && prisma db seed"

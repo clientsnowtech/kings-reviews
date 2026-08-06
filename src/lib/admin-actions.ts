@@ -365,8 +365,6 @@ export async function createCategory(formData: FormData) {
   const session = await requireAdmin()
   const name = String(formData.get('name') ?? '').trim()
   const icon = String(formData.get('icon') ?? '').trim()
-  const parentIdRaw = String(formData.get('parentId') ?? '')
-  const parentId = parentIdRaw ? Number(parentIdRaw) : null
   if (name.length < 2) return
 
   const base = slugify(name)
@@ -375,7 +373,7 @@ export async function createCategory(formData: FormData) {
     slug = `${base}-${i}`
   }
 
-  const cat = await db.category.create({ data: { name, slug, icon: icon || null, parentId } })
+  const cat = await db.category.create({ data: { name, slug, icon: icon || null } })
   await logAudit(session, 'category.create', 'category', String(cat.id), name)
   revalidatePath('/admin/categories')
   revalidatePath('/categories')

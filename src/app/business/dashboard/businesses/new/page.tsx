@@ -9,16 +9,10 @@ export const dynamic = 'force-dynamic'
 export default async function AddBusinessPage() {
   await requireUser('/business/dashboard/businesses/new')
 
-  const parents = await db.category.findMany({
-    where: { parentId: null },
-    orderBy: { sort: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
-    },
+  const categories = await db.category.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
   })
-  const groups = parents.filter((p) => p.children.length > 0)
 
   return (
     <div className="space-y-6">
@@ -30,7 +24,7 @@ export default async function AddBusinessPage() {
       </div>
 
       <div className="rounded-2xl border bg-surface p-6 sm:p-8">
-        <BusinessRegisterForm groups={groups} />
+        <BusinessRegisterForm categories={categories} />
       </div>
     </div>
   )

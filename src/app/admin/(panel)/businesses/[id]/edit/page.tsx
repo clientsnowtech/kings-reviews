@@ -15,20 +15,11 @@ export default async function AdminEditBusiness({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [business, parents] = await Promise.all([
+  const [business, categories] = await Promise.all([
     db.business.findUnique({ where: { id } }),
-    db.category.findMany({
-      where: { parentId: null },
-      orderBy: { sort: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        children: { orderBy: { name: 'asc' }, select: { id: true, name: true } },
-      },
-    }),
+    db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ])
   if (!business) notFound()
-  const groups = parents.filter((p) => p.children.length > 0)
 
   const field = 'h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand'
   const label = 'mb-1 block text-sm font-medium'
@@ -52,7 +43,7 @@ export default async function AdminEditBusiness({
           <input name="name" defaultValue={business.name} required className={field} />
         </div>
 
-        <CategoryPicker groups={groups} defaultCategoryId={business.categoryId} />
+        <CategoryPicker categories={categories} defaultCategoryId={business.categoryId} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

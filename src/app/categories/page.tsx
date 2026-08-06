@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { ArrowRight, Building2, LayoutGrid, Sparkles, Star } from 'lucide-react'
+import { ArrowRight, Building2, LayoutGrid, Search, Sparkles } from 'lucide-react'
 import { db } from '@/lib/db'
 import { CategoryIcon } from '@/components/category-icon'
-import { CategoryExplorer, type ExplorerGroup } from '@/components/category-explorer'
 
 export const metadata: Metadata = {
   title: 'All categories',
@@ -11,45 +10,32 @@ export const metadata: Metadata = {
 }
 export const dynamic = 'force-dynamic'
 
-export default async function CategoriesPage() {
-  const [parents, counts] = await Promise.all([
+/** The full list runs to ~4,000 names, so a page only ever shows a slice. */
+const PER_PAGE = 200
+
+export default async function CategoriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const query = (q ?? '').trim()
+  const where = query ? { name: { contains: query } } : {}
+
+  const [categories, matching, total, counts] = await Promise.all([
     db.category.findMany({
-      where: { parentId: null },
-      orderBy: { sort: 'asc' },
-      include: { children: { orderBy: { name: 'asc' } } },
+      where,
+      orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
+      take: PER_PAGE,
+      select: { id: true, name: true, slug: true, icon: true },
     }),
-    db.business.groupBy({
-      by: ['categoryId'],
-      where: { status: 'LIVE' },
-      _count: { _all: true },
-    }),
+    db.category.count({ where }),
+    db.category.count(),
+    db.business.groupBy({ by: ['categoryId'], where: { status: 'LIVE' }, _count: { _all: true } }),
   ])
 
   const countOf = new Map(counts.map((c) => [c.categoryId, c._count._all]))
-
-  // a parent's number includes everything filed under its sub-categories —
-  // /category/[slug] aggregates the same way, so the two pages agree
-  const groups: ExplorerGroup[] = parents.map((p) => {
-    const children = p.children.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      icon: c.icon,
-      count: countOf.get(c.id) ?? 0,
-    }))
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      icon: p.icon,
-      count: (countOf.get(p.id) ?? 0) + children.reduce((n, c) => n + c.count, 0),
-      children,
-    }
-  })
-
-  const totalSubs = groups.reduce((n, g) => n + g.children.length, 0)
   const totalBiz = counts.reduce((n, c) => n + c._count._all, 0)
-  const popular = [...groups].sort((a, b) => b.count - a.count).slice(0, 6)
 
   return (
     <div>
@@ -74,37 +60,56 @@ export default async function CategoriesPage() {
           </p>
 
           <dl className="mt-8 flex flex-wrap gap-3">
-            <Stat icon={<LayoutGrid size={16} />} value={groups.length} label="main categories" />
-            <Stat icon={<Star size={16} />} value={totalSubs} label="sub-categories" />
+            <Stat icon={<LayoutGrid size={16} />} value={total} label="categories" />
             <Stat icon={<Building2 size={16} />} value={totalBiz} label="live businesses" />
           </dl>
 
-          {popular.length > 0 && (
-            <div className="mt-8 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-muted">Popular:</span>
-              {popular.map((g) => (
-                <Link
-                  key={g.id}
-                  href={`/category/${g.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border bg-white/80 px-3.5 py-1.5 text-sm font-medium shadow-soft transition hover:border-brand hover:text-brand"
-                >
-                  <CategoryIcon name={g.icon} size={14} />
-                  {g.name}
-                </Link>
-              ))}
+          {/* A GET form keeps the search shareable and works without JavaScript. */}
+          <form action="/categories" className="mt-8 flex max-w-md items-center gap-2">
+            <div className="flex h-12 flex-1 items-center gap-2 rounded-full border bg-white px-4 shadow-soft">
+              <Search size={17} className="shrink-0 text-muted" />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search categories, e.g. plumber"
+                className="h-full w-full bg-transparent text-sm outline-none"
+              />
             </div>
-          )}
+            <button className="h-12 shrink-0 rounded-full bg-brand px-6 text-sm font-semibold text-white transition hover:bg-brand-strong">
+              Search
+            </button>
+          </form>
         </div>
       </section>
 
       {/* ============ ALL CATEGORIES ============ */}
       <section className="mx-auto max-w-6xl px-4 py-12">
-        {groups.length === 0 ? (
+        <p className="mb-5 text-sm text-muted">
+          {query
+            ? `${matching.toLocaleString('en-IN')} matching “${query}”`
+            : `${total.toLocaleString('en-IN')} categories`}
+          {matching > PER_PAGE && ` — showing the first ${PER_PAGE}`}
+        </p>
+
+        {categories.length === 0 ? (
           <p className="rounded-2xl border bg-surface p-12 text-center text-muted shadow-soft">
-            No categories have been set up yet.
+            {query ? `No category matches “${query}”.` : 'No categories have been set up yet.'}
           </p>
         ) : (
-          <CategoryExplorer groups={groups} />
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {categories.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/category/${c.slug}`}
+                  className="flex items-center gap-3 rounded-xl border bg-surface px-4 py-3 shadow-soft transition hover:border-brand hover:text-brand"
+                >
+                  <CategoryIcon name={c.icon} size={16} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
+                  <span className="shrink-0 text-xs text-muted">{countOf.get(c.id) ?? 0}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

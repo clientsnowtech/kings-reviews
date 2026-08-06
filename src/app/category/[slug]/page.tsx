@@ -34,19 +34,13 @@ export default async function CategoryPage({
   const { slug } = await params
   const { sort = 'top', city } = await searchParams
 
-  const category = await db.category.findUnique({
-    where: { slug },
-    include: { children: { orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true } } },
-  })
+  const category = await db.category.findUnique({ where: { slug } })
   if (!category) notFound()
 
   const sortKey = (sort in SORTS ? sort : 'top') as keyof typeof SORTS
 
-  // a parent category aggregates all of its sub-categories' businesses
-  const catIds = [category.id, ...category.children.map((c) => c.id)]
-
   const where: Prisma.BusinessWhereInput = {
-    categoryId: { in: catIds },
+    categoryId: category.id,
     status: 'LIVE',
     ...(city ? { city } : {}),
   }
@@ -59,7 +53,7 @@ export default async function CategoryPage({
       take: 60,
     }),
     db.business.findMany({
-      where: { categoryId: { in: catIds }, status: 'LIVE' },
+      where: { categoryId: category.id, status: 'LIVE' },
       distinct: ['city'],
       select: { city: true },
       orderBy: { city: 'asc' },
@@ -78,20 +72,6 @@ export default async function CategoryPage({
         </div>
       </div>
 
-      {/* sub-categories */}
-      {category.children.length > 0 && (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {category.children.map((sc) => (
-            <Link
-              key={sc.id}
-              href={`/category/${sc.slug}`}
-              className="rounded-full border bg-surface px-3 py-1.5 text-sm font-medium hover:border-brand hover:text-brand"
-            >
-              {sc.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* filters */}
       <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
