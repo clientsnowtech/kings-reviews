@@ -20,7 +20,11 @@ export default async function CategoriesPage({
 }) {
   const { q } = await searchParams
   const query = (q ?? '').trim()
-  const where = query ? { name: { contains: query } } : {}
+
+  // Only categories someone has actually listed under: the directory carries
+  // Google's full ~4,000, and browsing thousands of empty ones is no browsing.
+  const listed = { businesses: { some: { status: 'LIVE' as const } } }
+  const where = query ? { ...listed, name: { contains: query } } : listed
 
   const [categories, matching, total, counts] = await Promise.all([
     db.category.findMany({
@@ -30,7 +34,7 @@ export default async function CategoriesPage({
       select: { id: true, name: true, slug: true, icon: true },
     }),
     db.category.count({ where }),
-    db.category.count(),
+    db.category.count({ where: listed }),
     db.business.groupBy({ by: ['categoryId'], where: { status: 'LIVE' }, _count: { _all: true } }),
   ])
 
@@ -93,7 +97,9 @@ export default async function CategoriesPage({
 
         {categories.length === 0 ? (
           <p className="rounded-2xl border bg-surface p-12 text-center text-muted shadow-soft">
-            {query ? `No category matches “${query}”.` : 'No categories have been set up yet.'}
+            {query
+              ? `No listed category matches “${query}”.`
+              : 'No businesses have been listed yet — categories appear here once they do.'}
           </p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

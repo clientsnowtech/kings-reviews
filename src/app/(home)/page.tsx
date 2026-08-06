@@ -56,9 +56,13 @@ const websiteSchema = {
 
 export default async function Home() {
   const [categories, topRated, recent, totalBiz, totalReviews, cities] = await Promise.all([
-    // Busiest first — with ~4,000 flat categories an alphabetical top 8 would
-    // just be whatever starts with a digit.
-    db.category.findMany({ orderBy: [{ listingCount: 'desc' }, { name: 'asc' }], take: 8 }),
+    // Busiest first, and only ones with something to show — the directory
+    // carries Google's full ~4,000 categories, nearly all of them empty.
+    db.category.findMany({
+      where: { businesses: { some: { status: 'LIVE' } } },
+      orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
+      take: 8,
+    }),
     db.business.findMany({
       where: { status: 'LIVE' },
       orderBy: [{ ratingCount: 'desc' }, { ratingAvg: 'desc' }],
@@ -248,6 +252,7 @@ export default async function Home() {
       </section>
 
       {/* ============ CATEGORIES ============ */}
+      {categories.length > 0 && (
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="mb-8 flex items-end justify-between">
           <div>
@@ -286,6 +291,7 @@ export default async function Home() {
           ))}
         </div>
       </section>
+      )}
 
       {/* ============ RECENT REVIEWS ============ */}
       <section className="border-y bg-cream">
