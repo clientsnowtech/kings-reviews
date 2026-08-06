@@ -35,7 +35,14 @@ node node_modules/prisma/build/index.js generate
 node node_modules/prisma/build/index.js db push
 
 echo "--- building"
-npm run build
+# Left to itself V8 sizes its heap from the machine's RAM, not the account's
+# LVE cap, so the static-generation worker overshoots and aborts (SIGABRT).
+# Retry once: the abort is a threshold, not a deterministic failure.
+export NODE_OPTIONS="--max-old-space-size=2048"
+npm run build || {
+  echo "--- build aborted, retrying once"
+  npm run build
+}
 
 echo "--- restarting"
 mkdir -p tmp
