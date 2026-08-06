@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { ArrowRight, Building2, LayoutGrid, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, Building2, LayoutGrid, Sparkles } from 'lucide-react'
 import { db } from '@/lib/db'
 import { colorFrom } from '@/lib/utils'
 import { CategoryIcon } from '@/components/category-icon'
+import { Pagination } from '@/components/pagination'
+import { CategorySearch } from '@/components/category-search'
 
 export const metadata: Metadata = {
   title: 'All categories',
@@ -12,15 +14,16 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 /** The full list runs to ~4,000 names, so a page only ever shows a slice. */
-const PER_PAGE = 200
+const PER_PAGE = 48
 
 export default async function CategoriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string; page?: string }>
 }) {
-  const { q } = await searchParams
+  const { q, page: pageParam } = await searchParams
   const query = (q ?? '').trim()
+  const page = Math.max(1, Number(pageParam) || 1)
 
   // Only categories someone has actually listed under: the directory carries
   // Google's full ~4,000, and browsing thousands of empty ones is no browsing.
@@ -32,6 +35,7 @@ export default async function CategoriesPage({
     db.category.findMany({
       where,
       orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
+      skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
       select: { id: true, name: true, slug: true, icon: true },
     }),
@@ -52,6 +56,7 @@ export default async function CategoriesPage({
     }
   }
   const totalBiz = businesses.length
+  const pageCount = Math.max(1, Math.ceil(matching / PER_PAGE))
 
   return (
     <div>
@@ -75,26 +80,16 @@ export default async function CategoriesPage({
             Find and review businesses by what they actually do — from restaurants to repairs.
           </p>
 
-          <dl className="mt-8 grid max-w-md grid-cols-2 gap-3">
-            <Stat icon={<LayoutGrid size={16} />} value={total} label="categories" />
-            <Stat icon={<Building2 size={16} />} value={totalBiz} label="live businesses" />
-          </dl>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <dl className="flex h-12 shrink-0 items-center gap-4 rounded-2xl border bg-white/80 px-4 shadow-soft">
+              <Stat icon={<LayoutGrid size={16} />} value={total} label="categories" />
+              <span aria-hidden className="h-6 w-px bg-border" />
+              <Stat icon={<Building2 size={16} />} value={totalBiz} label="live businesses" />
+            </dl>
 
-          {/* A GET form keeps the search shareable and works without JavaScript. */}
-          <form action="/categories" className="mt-8 flex max-w-md items-center gap-2">
-            <div className="flex h-12 flex-1 items-center gap-2 rounded-full border bg-white px-4 shadow-soft">
-              <Search size={17} className="shrink-0 text-muted" />
-              <input
-                name="q"
-                defaultValue={query}
-                placeholder="Search categories, e.g. plumber"
-                className="h-full w-full bg-transparent text-sm outline-none"
-              />
-            </div>
-            <button className="h-12 shrink-0 rounded-full bg-brand px-6 text-sm font-semibold text-white transition hover:bg-brand-strong">
-              Search
-            </button>
-          </form>
+            {/* Debounced client search — the URL stays shareable either way. */}
+            <CategorySearch defaultValue={query} />
+          </div>
         </div>
       </section>
 
@@ -104,14 +99,16 @@ export default async function CategoriesPage({
           {query
             ? `${matching.toLocaleString('en-IN')} matching “${query}”`
             : `${total.toLocaleString('en-IN')} categories`}
-          {matching > PER_PAGE && ` — showing the first ${PER_PAGE}`}
+          {pageCount > 1 && ` — page ${page} of ${pageCount}`}
         </p>
 
         {categories.length === 0 ? (
           <p className="rounded-2xl border bg-surface p-12 text-center text-muted shadow-soft">
-            {query
-              ? `No listed category matches “${query}”.`
-              : 'No businesses have been listed yet — categories appear here once they do.'}
+            {page > 1
+              ? 'Nothing on this page — try an earlier one.'
+              : query
+                ? `No listed category matches “${query}”.`
+                : 'No businesses have been listed yet — categories appear here once they do.'}
           </p>
         ) : (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -147,6 +144,18 @@ export default async function CategoriesPage({
             ))}
           </ul>
         )}
+
+        {pageCount > 1 && (
+          <div className="mt-8">
+            <Pagination
+              basePath="/categories"
+              page={page}
+              pageCount={pageCount}
+              total={matching}
+              params={{ q: query || undefined }}
+            />
+          </div>
+        )}
       </section>
 
       {/* ============ CTA ============ */}
@@ -175,7 +184,7 @@ export default async function CategoriesPage({
 
 function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border bg-white/80 px-4 py-3 shadow-soft">
+    <div className="flex items-center gap-2.5">
       <span className="grid h-8 w-8 place-items-center rounded-full bg-brand/10 text-brand">{icon}</span>
       <div>
         <dt className="sr-only">{label}</dt>
