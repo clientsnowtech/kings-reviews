@@ -35,6 +35,10 @@ node node_modules/prisma/build/index.js generate
 node node_modules/prisma/build/index.js db push
 
 echo "--- building"
+# A build killed mid-flight leaves its lock behind, and every later build then
+# refuses to start with "Another next build process is already running".
+pkill -f "next/dist/bin/next build" 2>/dev/null || true
+rm -f .next/*.lock .next/build.lock
 # Left to itself V8 sizes its heap from the machine's RAM, not the account's
 # LVE cap, so the static-generation worker overshoots and aborts (SIGABRT).
 # Retry once: the abort is a threshold, not a deterministic failure.
