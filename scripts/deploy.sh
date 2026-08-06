@@ -43,10 +43,18 @@ rm -f .next/*.lock .next/build.lock
 # LVE cap, so the static-generation worker overshoots and aborts (SIGABRT).
 # Retry once: the abort is a threshold, not a deterministic failure.
 export NODE_OPTIONS="--max-old-space-size=2048"
-npm run build || {
-  echo "--- build aborted, retrying once"
-  npm run build
-}
+built=0
+for attempt in 1 2 3; do
+  if npm run build; then
+    built=1
+    break
+  fi
+  echo "--- build died on attempt $attempt (SIGABRT/SIGSEGV under the memory cap), retrying"
+  pkill -f "next/dist/bin/next build" 2>/dev/null || true
+  rm -f .next/*.lock .next/build.lock
+  sleep 5
+done
+[ "$built" = 1 ] || { echo "--- build failed three times, leaving the old .next in place"; exit 1; }
 
 echo "--- restarting"
 mkdir -p tmp
