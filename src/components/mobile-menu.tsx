@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import type { Role } from '@prisma/client'
@@ -31,7 +32,10 @@ export function MobileMenu({ role }: { role: Role | null }) {
         <Menu size={22} />
       </button>
 
-      {open && (
+      {/* The header sets backdrop-blur, and a backdrop-filter makes its box the
+          containing block for fixed-position descendants — the drawer would be
+          trapped inside the header strip. Portalling to body escapes that. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
           {/* Narrow phones cannot fit a fixed 18rem panel beside the backdrop,
@@ -79,7 +83,8 @@ export function MobileMenu({ role }: { role: Role | null }) {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
