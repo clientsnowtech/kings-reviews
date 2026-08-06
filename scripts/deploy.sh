@@ -20,6 +20,12 @@ set -u
 
 cd "$APP"
 
+# Both tools fork a child just to phone home for version checks, and under the
+# account's process cap that spawn fails outright with EAGAIN — killing the
+# deploy over telemetry nobody reads.
+export CHECKPOINT_DISABLE=1
+export NEXT_TELEMETRY_DISABLED=1
+
 echo "--- pulling"
 git fetch --prune origin
 git reset --hard origin/master
