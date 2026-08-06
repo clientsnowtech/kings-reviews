@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowRight, Building2, LayoutGrid, Search, Sparkles } from 'lucide-react'
 import { db } from '@/lib/db'
+import { colorFrom } from '@/lib/utils'
 import { CategoryIcon } from '@/components/category-icon'
 
 export const metadata: Metadata = {
@@ -74,7 +75,7 @@ export default async function CategoriesPage({
             Find and review businesses by what they actually do — from restaurants to repairs.
           </p>
 
-          <dl className="mt-8 flex flex-wrap gap-3">
+          <dl className="mt-8 grid max-w-md grid-cols-2 gap-3">
             <Stat icon={<LayoutGrid size={16} />} value={total} label="categories" />
             <Stat icon={<Building2 size={16} />} value={totalBiz} label="live businesses" />
           </dl>
@@ -113,16 +114,34 @@ export default async function CategoriesPage({
               : 'No businesses have been listed yet — categories appear here once they do.'}
           </p>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {categories.map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/category/${c.slug}`}
-                  className="flex items-center gap-3 rounded-xl border bg-surface px-4 py-3 shadow-soft transition hover:border-brand hover:text-brand"
+                  className="group block overflow-hidden rounded-2xl border bg-surface shadow-soft transition hover:-translate-y-0.5 hover:shadow-float"
                 >
-                  <CategoryIcon name={c.icon} category={c.name} size={16} />
-                  <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
-                  <span className="shrink-0 text-xs text-muted">{countOf.get(c.id) ?? 0}</span>
+                  <div
+                    className="relative h-28 overflow-hidden"
+                    style={{ background: `linear-gradient(135deg, ${colorFrom(c.slug)}, var(--brand-strong))` }}
+                  >
+                    <CategoryIcon
+                      name={c.icon}
+                      category={c.name}
+                      size={96}
+                      className="absolute -bottom-4 -right-3 text-white/20 transition duration-500 group-hover:scale-110"
+                    />
+                    <span className="absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-xl bg-white/95 text-brand shadow-soft">
+                      <CategoryIcon name={c.icon} category={c.name} size={18} />
+                    </span>
+                    <span className="absolute bottom-2 left-3 pr-12 font-semibold text-white drop-shadow">
+                      {c.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-muted">{countOf.get(c.id) ?? 0} listings</span>
+                    <ArrowRight size={15} className="text-muted transition group-hover:translate-x-0.5 group-hover:text-brand" />
+                  </div>
                 </Link>
               </li>
             ))}
