@@ -67,7 +67,7 @@ async function NavAuth() {
               Dashboard
             </Link>
           )}
-          <Link href="/my/reviews" title={user.name ?? user.email ?? ''}>
+          <Link href="/my/profile" title={user.name ?? user.email ?? ''}>
             <span
               className="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold text-white"
               style={{ background: colorFrom(user.email ?? user.name ?? 'u') }}

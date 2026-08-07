@@ -27,6 +27,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Two-factor (TOTP). The secret is written when setup starts but only trusted
+  // once twoFactorEnabled flips, so an abandoned setup locks nobody out.
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorAt      DateTime?
+  /// JSON array of sha256 hashes — one-time codes for a lost phone
+  twoFactorCodes   String?   @db.Text
+
   accounts      Account[]
   sessions      Session[]
   businesses    Business[]
@@ -216,7 +224,12 @@ model Review {
   rating       Int
   title        String
   body         String       @db.Text
-  status       ReviewStatus @default(LIVE)
+  // reviews are never published on submit — a human approves them first
+  status       ReviewStatus @default(PENDING)
+  // why a review was rejected, and when it was decided. The reviewer sees the
+  // reason, so a rejection is an answer rather than a silence.
+  rejectReason String?      @db.Text
+  moderatedAt  DateTime?
   helpfulCount Int          @default(0)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -291,6 +304,14 @@ model ReviewReport {
 
   @@unique([reviewId, userId])
   @@index([status])
+}
+
+/// Extra blocked words on top of the built-in list in src/lib/moderation.ts.
+/// Abuse vocabulary moves faster than releases, so admins own this table.
+model BlockedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  createdAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------------- admin

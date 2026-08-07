@@ -1,5 +1,6 @@
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { addBusinessImages, deleteBusinessImage } from '@/lib/business-actions'
+import { ImageInput } from '@/components/image-input'
 
 type Img = { id: number; path: string }
 
@@ -42,10 +43,8 @@ export function BusinessGallery({
       {images.length < 8 && (
         <form action={addBusinessImages} className="mt-4 flex flex-wrap items-center gap-3">
           <input type="hidden" name="businessId" value={businessId} />
-          <input
-            type="file"
+          <ImageInput
             name="images"
-            accept="image/*"
             multiple
             required
             className="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-mint file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-strong"

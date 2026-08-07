@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { updateBusiness, type ActionState } from '@/lib/actions'
 import { CategoryPicker, type CategoryOption } from './category-picker'
 import { LocationPicker } from './location-picker'
+import { ImageInput } from './image-input'
 
 const initial: ActionState = {}
 
@@ -129,10 +130,8 @@ export function BusinessEditForm({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={business.logo} alt="" className="mb-2 h-16 w-16 rounded-lg border object-cover" />
           )}
-          <input
+          <ImageInput
             name="logo"
-            type="file"
-            accept="image/*"
             className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-white"
           />
         </div>
@@ -142,10 +141,8 @@ export function BusinessEditForm({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={business.cover} alt="" className="mb-2 h-16 w-full rounded-lg border object-cover" />
           )}
-          <input
+          <ImageInput
             name="cover"
-            type="file"
-            accept="image/*"
             className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-white"
           />
         </div>

@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { registerBusiness, type ActionState } from '@/lib/actions'
 import { CategoryPicker, type CategoryOption } from './category-picker'
 import { LocationPicker } from './location-picker'
+import { ImageInput } from './image-input'
 
 const initial: ActionState = {}
 const inputCls = 'h-11 w-full rounded-lg border bg-background px-3 outline-none focus:border-brand'
@@ -85,23 +86,19 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium">Logo</label>
-            <input
+            <ImageInput
               name="logo"
-              type="file"
-              accept="image/*"
               className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-white"
+              hint="Square image works best."
             />
-            <p className="mt-1 text-xs text-muted">Square image works best.</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">Cover</label>
-            <input
+            <ImageInput
               name="cover"
-              type="file"
-              accept="image/*"
               className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-white"
+              hint="Wide banner shown on your profile."
             />
-            <p className="mt-1 text-xs text-muted">Wide banner shown on your profile.</p>
           </div>
         </div>
       </Section>

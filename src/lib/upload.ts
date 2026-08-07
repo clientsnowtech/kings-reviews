@@ -2,7 +2,9 @@ import { writeFile, mkdir, unlink } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
 
-const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
+/** Hard ceiling per image. The browser shrinks pictures before they are sent
+ *  (see src/lib/image-compress.ts), so this only catches what gets past that. */
+export const MAX_UPLOAD_BYTES = 1024 * 1024 // 1 MB
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 /** Save uploaded image files to /public/uploads/<subdir> and return their web paths. */
@@ -18,7 +20,7 @@ export async function saveImages(
   for (const file of files) {
     if (out.length >= max) break
     if (!file || typeof file.arrayBuffer !== 'function') continue
-    if (file.size === 0 || file.size > MAX_BYTES) continue
+    if (file.size === 0 || file.size > MAX_UPLOAD_BYTES) continue
     if (!ALLOWED.has(file.type)) continue
 
     if (!made) {

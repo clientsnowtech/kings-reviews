@@ -7,7 +7,7 @@
  */
 
 export type BadgeTier = 'rated' | 'silver' | 'gold' | 'diamond'
-export type BadgeVariant = 'card' | 'strip' | 'micro'
+export type BadgeVariant = 'card' | 'square' | 'seal' | 'tile' | 'strip' | 'banner' | 'micro'
 export type BadgeTheme = 'light' | 'dark'
 
 export type TierDef = {
@@ -59,12 +59,24 @@ export function nextTier(
   }
 }
 
-export const BADGE_VARIANTS: BadgeVariant[] = ['card', 'strip', 'micro']
+export const BADGE_VARIANTS: BadgeVariant[] = [
+  'card',
+  'square',
+  'seal',
+  'tile',
+  'strip',
+  'banner',
+  'micro',
+]
 export const BADGE_THEMES: BadgeTheme[] = ['light', 'dark']
 
 export const BADGE_SIZES: Record<BadgeVariant, { width: number; height: number }> = {
   card: { width: 220, height: 250 },
+  square: { width: 180, height: 180 },
+  seal: { width: 170, height: 170 },
+  tile: { width: 132, height: 132 },
   strip: { width: 330, height: 84 },
+  banner: { width: 400, height: 112 },
   micro: { width: 280, height: 34 },
 }
 
@@ -147,6 +159,15 @@ function glyph(kind: TierDef['glyph']): string {
 
 const SPARKLE = 'M12 0l1.5 10.5L24 12l-10.5 1.5L12 24l-1.5-10.5L0 12l10.5-1.5z'
 
+/** Teal check disc — the verification mark, drawn from its own centre. */
+function tickDisc(cx: number, cy: number, r: number): string {
+  return `<circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r + 1.4)}" fill="#ffffff"/>
+    <circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r)}" fill="#0e7a63"/>
+    <g transform="translate(${round(cx - r)} ${round(cy - r)}) scale(${round((r * 2) / 24, 4)})">
+      <path d="M6 12.4l4 4 8-8.6" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>`
+}
+
 /**
  * Gradient disc with the tier glyph centred inside it. Earned tiers get a
  * metallic sheen; Diamond also gets glints, but only when the disc is big
@@ -157,14 +178,7 @@ function medal(cx: number, cy: number, r: number, tier: TierDef, verified = fals
   const shiny = tier.key !== 'rated'
 
   // verification tick rides the medal like a profile check — no text to measure
-  const tickR = round(r * 0.36)
-  const tick = verified
-    ? `<circle cx="${round(cx + r * 0.72)}" cy="${round(cy + r * 0.72)}" r="${round(tickR + 1.4)}" fill="#ffffff"/>
-       <circle cx="${round(cx + r * 0.72)}" cy="${round(cy + r * 0.72)}" r="${tickR}" fill="#0e7a63"/>
-       <g transform="translate(${round(cx + r * 0.72 - tickR)} ${round(cy + r * 0.72 - tickR)}) scale(${round((tickR * 2) / 24, 4)})">
-         <path d="M6 12.4l4 4 8-8.6" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-       </g>`
-    : ''
+  const tick = verified ? tickDisc(cx + r * 0.72, cy + r * 0.72, r * 0.36) : ''
 
   const sparkles =
     tier.key === 'diamond' && r >= 18
@@ -243,6 +257,58 @@ function cardBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): s
     ${pill(Math.round(110 - pillWidth(tier, 10) / 2), 218, 22, tier, 10)}`
 }
 
+/** Square card — the compact cousin of `card`, for tight sidebars. */
+function squareBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
+  const { width: w, height: h } = BADGE_SIZES.square
+  const cx = w / 2
+  return `${frame(w, h, 20, theme)}
+    ${brandMark(12, 12, 15)}
+    <text x="33" y="24" font-size="11" font-weight="700" fill="${theme.fg}">TrustIndex</text>
+    ${medal(cx, 62, 22, tier, d.verified)}
+    <text x="${cx}" y="108" text-anchor="middle" font-size="26" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
+    ${starRow(cx - 41, 116, 14, 3, avg, theme)}
+    <text x="${cx}" y="146" text-anchor="middle" font-size="10.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
+    ${pill(Math.round(cx - pillWidth(tier, 9.5) / 2), 152, 20, tier, 9.5)}`
+}
+
+/**
+ * Round seal. No medal — the tier rides the ring instead, so the disc does not
+ * fight the circular frame it sits in.
+ */
+function sealBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
+  const { width: w } = BADGE_SIZES.seal
+  const c = w / 2
+  return `<circle cx="${c}" cy="${c}" r="${c - 0.5}" fill="${theme.bg}" stroke="${theme.border}"/>
+    <circle cx="${c}" cy="${c}" r="${c - 8}" fill="none" stroke="url(#ti-tier)" stroke-width="3"/>
+    ${brandMark(c - 11, 26, 22)}
+    <text x="${c}" y="92" text-anchor="middle" font-size="34" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
+    ${starRow(c - 38.5, 100, 13, 3, avg, theme)}
+    <text x="${c}" y="126" text-anchor="middle" font-size="10.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
+    ${pill(Math.round(c - pillWidth(tier, 9) / 2), 132, 19, tier, 9)}
+    ${d.verified ? tickDisc(c + 54.4, c - 54.4, 10) : ''}`
+}
+
+/**
+ * Smallest square. Drops the medal and reads the tier off a coloured footer
+ * band, which doubles as the wordmark strip.
+ */
+function tileBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
+  const { width: w, height: h } = BADGE_SIZES.tile
+  const cx = w / 2
+  return `${frame(w, h, 16, theme)}
+    <defs><clipPath id="ti-band"><rect width="${w}" height="${h}" rx="16"/></clipPath></defs>
+    ${starRow(cx - 38.5, 16, 13, 3, avg, theme)}
+    <text x="${cx}" y="68" text-anchor="middle" font-size="28" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
+    <text x="${cx}" y="86" text-anchor="middle" font-size="10" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
+    <g clip-path="url(#ti-band)">
+      <rect x="0" y="96" width="${w}" height="${h - 96}" fill="url(#ti-tier)"/>
+      <rect x="0" y="96" width="${w}" height="${round((h - 96) / 2)}" fill="#ffffff" opacity="0.14"/>
+    </g>
+    <text x="${cx}" y="112" text-anchor="middle" font-size="10.5" font-weight="700" fill="#ffffff">TrustIndex</text>
+    <text x="${cx}" y="124" text-anchor="middle" font-size="7.5" letter-spacing="1.2" fill="#ffffff" opacity="0.85">${esc(tier.label.toUpperCase())}</text>
+    ${d.verified ? tickDisc(w - 18, 22, 8) : ''}`
+}
+
 function stripBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
   const { width: w, height: h } = BADGE_SIZES.strip
   return `${frame(w, h, 16, theme)}
@@ -252,6 +318,19 @@ function stripBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): 
     <text x="80" y="60" font-size="11.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on TrustIndex</text>
     ${pill(w - 14 - pillWidth(tier, 9.5), 12, 20, tier, 9.5)}
     ${brandMark(w - 36, h - 34, 22)}`
+}
+
+/** Full-width footer bar — the strip with room for the business name. */
+function bannerBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
+  const { width: w, height: h } = BADGE_SIZES.banner
+  return `${frame(w, h, 18, theme)}
+    ${medal(56, 56, 28, tier, d.verified)}
+    <text x="100" y="40" font-size="15" font-weight="700" fill="${theme.fg}">${esc(clip(d.name, 22))}</text>
+    ${starRow(100, 52, 18, 4, avg, theme)}
+    <text x="216" y="67" font-size="17" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
+    <text x="100" y="90" font-size="11" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on TrustIndex</text>
+    ${pill(w - 16 - pillWidth(tier, 10), 14, 22, tier, 10)}
+    ${brandMark(w - 40, h - 40, 24)}`
 }
 
 function microBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
@@ -290,12 +369,19 @@ export function renderBadgeSvg(d: BadgeInput): string {
   const avg = Math.max(0, Math.min(5, d.ratingAvg))
   const label = `${badgeAltText(d)} · ${tier.label} badge`
 
-  const body =
-    d.variant === 'card'
-      ? cardBody(d, tier, theme, avg)
-      : d.variant === 'strip'
-        ? stripBody(d, tier, theme, avg)
-        : microBody(d, tier, theme, avg)
+  const bodies: Record<
+    BadgeVariant,
+    (d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number) => string
+  > = {
+    card: cardBody,
+    square: squareBody,
+    seal: sealBody,
+    tile: tileBody,
+    strip: stripBody,
+    banner: bannerBody,
+    micro: microBody,
+  }
+  const body = bodies[d.variant](d, tier, theme, avg)
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(label)}" font-family="${FONT}">
   <title>${esc(label)}</title>
@@ -323,7 +409,7 @@ export function renderBadgeSvg(d: BadgeInput): string {
 </svg>`
 
   // namespace the ids — inlined badges on the same page must not fight
-  return svg.replace(/ti-(brand|tier|stars|gloss|sheen)/g, (m) => `${m}-${uid(d)}`)
+  return svg.replace(/ti-(brand|tier|stars|gloss|sheen|band)/g, (m) => `${m}-${uid(d)}`)
 }
 
 /** Placeholder shown when a slug does not resolve to a live business. */

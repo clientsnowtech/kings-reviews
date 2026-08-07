@@ -11,6 +11,7 @@ import {
   Tags,
   BadgeCheck,
   ScrollText,
+  ShieldBan,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,10 +23,18 @@ const LINKS = [
   { href: '/admin/verifications', label: 'Verifications', icon: BadgeCheck },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
+  { href: '/admin/words', label: 'Blocked words', icon: ShieldBan },
   { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ]
 
-export function AdminSidebar({ openReports }: { openReports: number }) {
+export function AdminSidebar({
+  openReports,
+  pendingBusinesses = 0,
+}: {
+  openReports: number
+  /** listings nobody has approved yet — invisible to the public until then */
+  pendingBusinesses?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -45,6 +54,17 @@ export function AdminSidebar({ openReports }: { openReports: number }) {
           >
             <Icon size={17} />
             <span>{label}</span>
+            {href === '/admin/businesses' && pendingBusinesses > 0 && (
+              <span
+                className={cn(
+                  'ml-auto rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
+                  active ? 'bg-white/25 text-white' : 'bg-amber-500 text-white',
+                )}
+                title={`${pendingBusinesses} waiting for approval`}
+              >
+                {pendingBusinesses}
+              </span>
+            )}
             {href === '/admin/reports' && openReports > 0 && (
               <span
                 className={cn(

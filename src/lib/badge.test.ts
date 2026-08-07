@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   BADGE_SIZES,
+  BADGE_VARIANTS,
   CREDIT_URL,
   badgeAltText,
   nextTier,
@@ -58,7 +59,7 @@ test('verified listings get a tick and say so in alt text', () => {
 })
 
 test('every variant renders a well-formed, self-contained svg', () => {
-  for (const variant of ['card', 'strip', 'micro'] as const) {
+  for (const variant of BADGE_VARIANTS) {
     for (const theme of ['light', 'dark'] as const) {
       const svg = renderBadgeSvg({ ...base, variant, theme })
       const size = BADGE_SIZES[variant]

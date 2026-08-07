@@ -16,7 +16,8 @@ import {
 } from '@/lib/badge'
 
 /**
- * Frameable badge: /embed/badge/<slug>?variant=card|strip|micro&theme=light|dark
+ * Frameable badge:
+ * /embed/badge/<slug>?variant=card|square|seal|tile|strip|banner|micro&theme=light|dark
  *
  * Same artwork as /api/badge, but wrapped in a clickable link back to the
  * profile. Served as a bare route handler because the root layout would

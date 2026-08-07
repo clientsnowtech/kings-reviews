@@ -14,7 +14,11 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const session = await requireAdmin()
-  const openReports = await db.reviewReport.count({ where: { status: 'OPEN' } })
+  const [openReports, pendingBusinesses] = await Promise.all([
+    db.reviewReport.count({ where: { status: 'OPEN' } }),
+    // listings sitting in the approval queue, invisible to everyone until acted on
+    db.business.count({ where: { status: 'PENDING' } }),
+  ])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -39,7 +43,7 @@ export default async function AdminLayout({
             scrolling tab strip widens the whole grid past the viewport instead
             of scrolling inside itself. */}
         <aside className="min-w-0 md:sticky md:top-20 md:self-start">
-          <AdminSidebar openReports={openReports} />
+          <AdminSidebar openReports={openReports} pendingBusinesses={pendingBusinesses} />
         </aside>
         <main className="min-w-0">{children}</main>
       </div>

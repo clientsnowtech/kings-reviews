@@ -13,8 +13,13 @@ const STATUS: Record<string, string> = {
   SUSPENDED: 'bg-red-100 text-red-700',
 }
 
-export default async function BusinessesPage() {
+export default async function BusinessesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ submitted?: string }>
+}) {
   const { ownerId } = await requireOwner()
+  const { submitted } = await searchParams
 
   const businesses = await db.business.findMany({
     where: { ownerId },
@@ -24,6 +29,12 @@ export default async function BusinessesPage() {
 
   return (
     <div className="space-y-5">
+      {submitted && (
+        <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Thanks — your listing is with our team.</strong> It stays private until an admin
+          approves it, and you get an email either way.
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">My businesses</h2>
         <Link
@@ -86,6 +97,18 @@ export default async function BusinessesPage() {
                   </Link>
                 </div>
               </div>
+
+              {/* A pending listing 404s on the public page, so say why before
+                  the owner clicks View and thinks the site is broken. */}
+              {b.status !== 'LIVE' && (
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {b.status === 'PENDING'
+                    ? 'Waiting for admin approval — nothing is public yet, and its public page opens only once it is approved.'
+                    : b.status === 'REJECTED'
+                      ? 'Not approved. Edit the details and write to us to have it looked at again.'
+                      : 'Suspended by our team. Write to us to sort it out.'}
+                </p>
+              )}
             </div>
           ))}
         </div>

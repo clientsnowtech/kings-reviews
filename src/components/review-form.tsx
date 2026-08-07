@@ -1,8 +1,10 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { Star, ImagePlus } from 'lucide-react'
+import { Star, ImagePlus, AlertTriangle } from 'lucide-react'
 import { createReview, type ActionState } from '@/lib/actions'
+import { reviewTextError } from '@/lib/moderation'
+import { compressInput } from '@/lib/image-compress'
 
 const initial: ActionState = {}
 
@@ -30,6 +32,14 @@ export function ReviewForm({
   const [hover, setHover] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [dropped, setDropped] = useState(0)
+  const [shrinking, setShrinking] = useState(false)
+
+  // The server runs the same rules, but telling someone their link is a problem
+  // only after a round-trip reads like a rejection — say it while they type.
+  const [liveErrors, setLiveErrors] = useState<{ title?: string; body?: string }>({})
+  const check = (field: 'title' | 'body') => (e: { target: { value: string } }) =>
+    setLiveErrors((old) => ({ ...old, [field]: reviewTextError(e.target.value) ?? undefined }))
+  const blocked = !!(liveErrors.title || liveErrors.body)
 
   // object URLs are leaked memory until revoked — keep the live list in a ref
   // so the unmount cleanup can release whatever is still open
@@ -45,7 +55,7 @@ export function ReviewForm({
     if (state.ok) done.current?.()
   }, [state.ok])
 
-  function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target
     const picked = Array.from(input.files ?? [])
 
@@ -58,17 +68,25 @@ export function ReviewForm({
     }
     setDropped(Math.max(0, picked.length - MAX_IMAGES))
 
-    const next = Array.from(input.files ?? []).map((f) => URL.createObjectURL(f))
+    // a phone photo is several megabytes; shrink it here rather than have the
+    // server drop it for being too big
+    setShrinking(true)
+    const files = await compressInput(input)
+    setShrinking(false)
+
     setPreviews((old) => {
       old.forEach(URL.revokeObjectURL)
-      return next
+      return files.map((f) => URL.createObjectURL(f))
     })
   }
 
   if (state.ok) {
     return (
       <div className="rounded-xl border border-brand/30 bg-brand/5 p-6 text-center">
-        <p className="font-medium text-brand">Thanks! Your review has been posted.</p>
+        <p className="font-medium text-brand">Thanks! Your review has been submitted.</p>
+        <p className="mt-1 text-sm text-muted">
+          It goes live once the business or our team approves it — usually within a day.
+        </p>
       </div>
     )
   }
@@ -110,20 +128,30 @@ export function ReviewForm({
           <input
             name="title"
             defaultValue={existing?.title}
+            onChange={check('title')}
             placeholder="Summarise your experience"
             className="h-11 w-full rounded-lg border bg-background px-3 outline-none focus:border-brand"
           />
-          {state.fieldErrors?.title && <Err msg={state.fieldErrors.title} />}
+          {(liveErrors.title || state.fieldErrors?.title) && (
+            <Err msg={liveErrors.title ?? state.fieldErrors!.title} />
+          )}
         </div>
         <div>
           <textarea
             name="body"
             defaultValue={existing?.body}
+            onChange={check('body')}
             rows={5}
             placeholder="Tell others about your experience — what happened, what was good or bad?"
             className="w-full rounded-lg border bg-background p-3 outline-none focus:border-brand"
           />
-          {state.fieldErrors?.body && <Err msg={state.fieldErrors.body} />}
+          {(liveErrors.body || state.fieldErrors?.body) && (
+            <Err msg={liveErrors.body ?? state.fieldErrors!.body} />
+          )}
+          <p className="mt-1 text-xs text-muted">
+            No links, websites or contact details, and no abusive language. Reviews are checked
+            before they appear.
+          </p>
         </div>
       </div>
 
@@ -145,7 +173,9 @@ export function ReviewForm({
           </div>
         )}
         <p className="mt-1 text-xs text-muted">
-          Up to {MAX_IMAGES} images · JPG, PNG, WebP · 5 MB each
+          {shrinking
+            ? 'Shrinking photos…'
+            : `Up to ${MAX_IMAGES} images · JPG, PNG, WebP · large photos are shrunk automatically`}
         </p>
         {dropped > 0 && (
           <p className="mt-1 text-xs text-danger">
@@ -157,9 +187,19 @@ export function ReviewForm({
 
       {state.error && <Err msg={state.error} />}
 
+      {blocked && (
+        <p className="mt-4 flex items-start gap-2 rounded-lg border border-danger/40 bg-red-50 p-3 text-sm text-danger">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            This review cannot be submitted yet — no links, websites or email addresses, and no
+            abusive language.
+          </span>
+        </p>
+      )}
+
       <button
-        disabled={pending}
-        className="mt-4 h-11 rounded-lg bg-brand px-6 font-medium text-white hover:bg-brand-strong disabled:opacity-60"
+        disabled={pending || blocked || shrinking}
+        className="mt-4 h-11 rounded-lg bg-brand px-6 font-medium text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? 'Posting…' : existing ? 'Update review' : 'Post review'}
       </button>

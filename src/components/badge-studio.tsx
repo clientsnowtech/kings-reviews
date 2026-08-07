@@ -33,7 +33,11 @@ export type BadgeStats = Record<
 
 const VARIANTS: { key: BadgeVariant; label: string; hint: string }[] = [
   { key: 'card', label: 'Card', hint: 'Sidebar / footer' },
+  { key: 'square', label: 'Square', hint: 'Compact sidebar' },
+  { key: 'seal', label: 'Seal', hint: 'Round, about pages' },
+  { key: 'tile', label: 'Tile', hint: 'Smallest square' },
   { key: 'strip', label: 'Strip', hint: 'Header / hero' },
+  { key: 'banner', label: 'Banner', hint: 'Full-width footer' },
   { key: 'micro', label: 'Micro', hint: 'Inline, product pages' },
 ]
 

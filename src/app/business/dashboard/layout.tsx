@@ -22,20 +22,24 @@ export default async function BusinessLayout({
     ? await db.user.findUnique({ where: { id: actingAs }, select: { email: true, name: true } })
     : null
 
-  const unreplied = await db.review.count({
-    where: {
-      status: 'LIVE',
-      reply: null,
-      business: { ownerId },
-    },
-  })
+  const [unreplied, pendingReviews] = await Promise.all([
+    db.review.count({
+      where: {
+        status: 'LIVE',
+        reply: null,
+        business: { ownerId },
+      },
+    }),
+    // reviews this owner has to accept before they appear anywhere
+    db.review.count({ where: { status: 'PENDING', business: { ownerId } } }),
+  ])
 
   // reviews arrived since the owner last opened that business's reviews
   const newRows = await db.$queryRaw<{ c: bigint }[]>`
     SELECT COUNT(*) AS c FROM Review r
     JOIN Business b ON r.businessId = b.id
     WHERE b.ownerId = ${ownerId}
-      AND r.status = 'LIVE'
+      AND r.status IN ('LIVE', 'PENDING')
       AND (b.reviewsSeenAt IS NULL OR r.createdAt > b.reviewsSeenAt)
   `
   const newReviews = Number(newRows[0]?.c ?? 0)
@@ -79,7 +83,11 @@ export default async function BusinessLayout({
         {/* min-w-0: without it this grid item sizes to the tab strip's full
             width and pushes the page past the viewport on phones. */}
         <aside className="min-w-0 md:sticky md:top-20 md:self-start">
-          <BusinessSidebar unreplied={unreplied} newReviews={newReviews} />
+          <BusinessSidebar
+            unreplied={unreplied}
+            newReviews={newReviews}
+            pendingReviews={pendingReviews}
+          />
         </aside>
         <main className="min-w-0">{children}</main>
       </div>

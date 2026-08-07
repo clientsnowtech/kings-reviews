@@ -6,7 +6,9 @@ import path from 'path'
 import { db } from './db'
 import { auth } from './auth'
 import { actingOwnerId } from './impersonation'
-import { saveImages } from './upload'
+import { recomputeRating } from './rating'
+import { sendMail, reviewDecidedMail } from './mail'
+import { saveImages, deleteUploads } from './upload'
 
 /** Returns the business only if the caller owns it (or is acting for its owner). */
 async function ownedBusiness(businessId: string) {
@@ -87,6 +89,83 @@ export async function deleteBusinessImage(formData: FormData) {
   }
   revalidatePath(`/business/dashboard/businesses/${businessId}/edit`)
   revalidatePath(`/company/${biz.slug}`)
+}
+
+// ---------------------------------------------------------------- reviews
+
+/**
+ * Owner-side moderation. A review sits at PENDING until the owner approves it
+ * (LIVE) or rejects it (REMOVED) — rejections stay in the admin queue, so an
+ * owner burying honest criticism is visible rather than silent. Once a review
+ * has been decided, only an admin can move it again.
+ */
+export async function moderateReview(formData: FormData) {
+  const id = String(formData.get('id'))
+  const next = String(formData.get('status'))
+  const reason = String(formData.get('reason') ?? '').trim().slice(0, 500)
+  if (next !== 'LIVE' && next !== 'REMOVED') return
+
+  const session = await auth()
+  if (!session?.user) return
+  const ownerId = (await actingOwnerId(session)) ?? session.user.id
+
+  const review = await db.review.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      businessId: true,
+      images: { select: { path: true } },
+      user: { select: { email: true } },
+      business: { select: { ownerId: true, slug: true, name: true } },
+    },
+  })
+  if (!review || review.business.ownerId !== ownerId) return
+  if (review.status !== 'PENDING') return
+
+  await db.review.update({
+    where: { id },
+    data: {
+      status: next,
+      moderatedAt: new Date(),
+      rejectReason: next === 'REMOVED' ? reason || 'No reason given.' : null,
+    },
+  })
+
+  // Every owner decision goes on the record. Admins can see who rejects what,
+  // which is the only thing stopping an owner from quietly burying criticism.
+  await db.auditLog.create({
+    data: {
+      actorId: session.user.id,
+      actorEmail: session.user.email ?? '',
+      action: next === 'LIVE' ? 'review.owner.approve' : 'review.owner.reject',
+      entity: 'review',
+      entityId: id,
+      detail: next === 'REMOVED' ? reason || 'No reason given.' : null,
+    },
+  })
+
+  // a rejected review's photos are never shown again — do not keep them
+  if (next === 'REMOVED' && review.images.length) {
+    await db.reviewImage.deleteMany({ where: { reviewId: id } })
+    await deleteUploads(review.images.map((i) => i.path))
+  }
+
+  // a decision the reviewer never hears about is indistinguishable from silence
+  await sendMail(
+    reviewDecidedMail({
+      to: review.user.email,
+      businessName: review.business.name,
+      approved: next === 'LIVE',
+      reason: reason || null,
+      slug: review.business.slug,
+    }),
+  )
+
+  await recomputeRating(review.businessId)
+
+  revalidatePath('/business/dashboard/reviews')
+  revalidatePath('/business/dashboard')
+  revalidatePath(`/company/${review.business.slug}`)
 }
 
 // ---------------------------------------------------------------- verification

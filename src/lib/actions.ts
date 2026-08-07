@@ -3,10 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
-import { Prisma } from '@prisma/client'
 import { db } from './db'
 import { auth, signOut } from './auth'
 import { actingOwnerId } from './impersonation'
+import { recountCategories, categoryIdsOf } from './business'
+import { recomputeRating } from './rating'
+import { checkText } from './moderation-db'
+import { sendMail, reviewPendingMail, businessSubmittedMail } from './mail'
+import { AUTO_PUBLISH_DAYS } from './review-sla'
 import { slugify } from './utils'
 import { saveImages, deleteUploads } from './upload'
 import { rateLimit } from './rate-limit'
@@ -63,35 +67,6 @@ export async function registerUser(
 
 // ---------------------------------------------------------------- reviews
 
-async function recomputeRating(businessId: string) {
-  const rows = await db.review.groupBy({
-    by: ['rating'],
-    where: { businessId, status: 'LIVE' },
-    _count: { rating: true },
-  })
-  const hist = [0, 0, 0, 0, 0] // index 0 => 1 star
-  let total = 0
-  let sum = 0
-  for (const r of rows) {
-    const n = r._count.rating
-    hist[r.rating - 1] = n
-    total += n
-    sum += r.rating * n
-  }
-  await db.business.update({
-    where: { id: businessId },
-    data: {
-      ratingCount: total,
-      ratingAvg: total ? new Prisma.Decimal((sum / total).toFixed(2)) : new Prisma.Decimal(0),
-      rating1: hist[0],
-      rating2: hist[1],
-      rating3: hist[2],
-      rating4: hist[3],
-      rating5: hist[4],
-    },
-  })
-}
-
 export async function createReview(
   _prev: ActionState,
   formData: FormData,
@@ -112,9 +87,13 @@ export async function createReview(
   })
   if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
 
+  // the admin-managed blocklist runs after zod, since it needs a DB read
+  const extra = (await checkText(parsed.data.title)) ?? (await checkText(parsed.data.body))
+  if (extra) return { fieldErrors: { body: extra } }
+
   const business = await db.business.findUnique({
     where: { id: parsed.data.businessId },
-    select: { slug: true },
+    select: { slug: true, name: true, owner: { select: { email: true } } },
   })
   if (!business) return { error: 'Business not found' }
 
@@ -127,10 +106,13 @@ export async function createReview(
           userId: session.user.id,
         },
       },
+      // Nothing a reviewer writes goes live on its own — the owner or an admin
+      // has to approve it first, and an edit sends it back for approval too.
       update: {
         rating: parsed.data.rating,
         title: parsed.data.title,
         body: parsed.data.body,
+        status: 'PENDING',
       },
       create: {
         businessId: parsed.data.businessId,
@@ -138,6 +120,7 @@ export async function createReview(
         rating: parsed.data.rating,
         title: parsed.data.title,
         body: parsed.data.body,
+        status: 'PENDING',
       },
     })
   } catch {
@@ -164,8 +147,20 @@ export async function createReview(
     }
   }
 
+  // the owner cannot approve what they do not know about
+  await sendMail(
+    reviewPendingMail({
+      to: business.owner.email,
+      businessName: business.name,
+      rating: parsed.data.rating,
+      days: AUTO_PUBLISH_DAYS,
+    }),
+  )
+
+  // an edit can pull a previously live review back out of the average
   await recomputeRating(parsed.data.businessId)
   revalidatePath(`/company/${business.slug}`)
+  revalidatePath('/business/dashboard/reviews')
   return { ok: true }
 }
 
@@ -211,6 +206,10 @@ export async function replyToReview(
     body: formData.get('body'),
   })
   if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
+
+  // a reply is published text too — same rules as the review it answers
+  const bad = await checkText(parsed.data.body)
+  if (bad) return { fieldErrors: { body: bad } }
 
   const review = await db.review.findUnique({
     where: { id: parsed.data.reviewId },
@@ -311,26 +310,37 @@ export async function registerBusiness(
       mapUrl: parsed.data.mapUrl || null,
       logo: logo ?? null,
       cover: cover ?? null,
-      // hybrid: auto-live but unverified until admin/OTP verifies
-      status: 'LIVE',
+      // Nothing an owner lists is public until an admin approves it. Every
+      // public query filters on LIVE, so PENDING is invisible everywhere.
+      status: 'PENDING',
       extraCategories: {
         connect: extraCategoryIds(formData, parsed.data.categoryId).map((id) => ({ id })),
       },
     },
   })
 
-  // promote plain user to business role
+  // promote plain user to business role — the panel is where they now wait
   if (session.user.role === 'USER') {
     await db.user.update({ where: { id: session.user.id }, data: { role: 'BUSINESS' } })
   }
 
-  await db.category.update({
-    where: { id: parsed.data.categoryId },
-    data: { listingCount: { increment: 1 } },
-  })
+  // The category count only tracks live listings, so it moves on approval,
+  // not here. See recountCategory().
 
-  revalidatePath('/categories')
-  redirect(`/company/${slug}`)
+  const adminInbox = process.env.ADMIN_EMAIL ?? process.env.MAIL_FROM
+  if (adminInbox) {
+    await sendMail(
+      businessSubmittedMail({
+        to: adminInbox,
+        businessName: parsed.data.name,
+        city: parsed.data.city,
+        ownerEmail: session.user.email ?? parsed.data.email,
+      }),
+    )
+  }
+
+  revalidatePath('/admin/businesses')
+  redirect('/business/dashboard/businesses?submitted=1')
 }
 
 export async function updateBusiness(
@@ -367,6 +377,9 @@ export async function updateBusiness(
   if (!business) return { error: 'Business not found' }
   const ownerId = (await actingOwnerId(session)) ?? session.user.id
   if (business.ownerId !== ownerId) return { error: 'Not your business' }
+
+  // the categories it sat under before this edit, primary and extras alike
+  const before = await categoryIdsOf(parsed.data.id)
 
   // optional logo / cover replacement
   const logoFile = formData.get('logo')
@@ -406,17 +419,14 @@ export async function updateBusiness(
     },
   })
 
-  // keep category listing counts honest when the category changes
-  if (business.categoryId !== parsed.data.categoryId) {
-    await db.category.update({
-      where: { id: business.categoryId },
-      data: { listingCount: { decrement: 1 } },
-    })
-    await db.category.update({
-      where: { id: parsed.data.categoryId },
-      data: { listingCount: { increment: 1 } },
-    })
-  }
+  // Keep category listing counts honest. Recounted rather than shifted by one:
+  // this listing may still be PENDING (an unapproved listing counts nowhere),
+  // and an edit can rewrite the extra categories as well as the primary one.
+  await recountCategories([
+    ...before,
+    parsed.data.categoryId,
+    ...extraCategoryIds(formData, parsed.data.categoryId),
+  ])
 
   revalidatePath(`/company/${business.slug}`)
   revalidatePath('/business/dashboard/businesses')

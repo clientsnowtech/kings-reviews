@@ -25,6 +25,7 @@ import { HelpfulButton } from '@/components/helpful-button'
 import { ReviewControls } from '@/components/review-controls'
 import { ReviewBody } from '@/components/review-body'
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons'
+import { publishOverdueReviews } from '@/lib/review-sla'
 import { colorFrom, initials, formatDate, externalUrl } from '@/lib/utils'
 
 const PAGE_SIZE = 10
@@ -46,13 +47,19 @@ function orderFor(sort: SortKey): Prisma.ReviewOrderByWithRelationInput[] {
 }
 
 async function getBusiness(slug: string) {
-  return db.business.findFirst({
-    where: { slug, status: 'LIVE' },
-    include: {
-      category: { select: { name: true, slug: true } },
-      extraCategories: { orderBy: { name: 'asc' }, select: { name: true, slug: true } },
-    },
-  })
+  const where = { slug, status: 'LIVE' as const }
+  const include = {
+    category: { select: { name: true, slug: true } },
+    extraCategories: { orderBy: { name: 'asc' as const }, select: { name: true, slug: true } },
+  }
+
+  const b = await db.business.findFirst({ where, include })
+  if (!b) return null
+
+  // An owner who ignores a review does not get to bury it: anything past the
+  // approval deadline publishes itself here, and the denormalised rating
+  // columns are re-read only when that actually moved something.
+  return (await publishOverdueReviews(b.id)) ? db.business.findFirst({ where, include }) : b
 }
 
 export async function generateMetadata({
@@ -131,11 +138,17 @@ export default async function CompanyPage({
   const myReview = session?.user
     ? await db.review.findUnique({
         where: { businessId_userId: { businessId: b.id, userId: session.user.id } },
-        select: { rating: true, title: true, body: true },
+        select: { rating: true, title: true, body: true, status: true },
       })
     : null
 
   const isOwner = session?.user?.id === b.ownerId
+
+  // owners get nudged from their own profile page — a review nobody approves
+  // is a review nobody reads
+  const awaitingOwner = isOwner
+    ? await db.review.count({ where: { businessId: b.id, status: 'PENDING' } })
+    : 0
 
   // badge tier — only worth showing on the profile once it clears Silver
   const tier = tierFor(b.ratingCount, avg)
@@ -539,6 +552,15 @@ export default async function CompanyPage({
                 dashboard
               </Link>
               .
+              {awaitingOwner > 0 && (
+                <Link
+                  href="/business/dashboard/reviews?s=pending"
+                  className="mt-3 block rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  {awaitingOwner} {awaitingOwner === 1 ? 'review is' : 'reviews are'} waiting for
+                  your approval →
+                </Link>
+              )}
             </div>
           ) : (
             <ReviewDialog

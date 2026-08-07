@@ -64,6 +64,8 @@ export function MobileMenu({ role }: { role: Role | null }) {
                   <MobileLink href="/business/dashboard" onClick={() => setOpen(false)}>Dashboard</MobileLink>
                 )}
                 <MobileLink href="/my/reviews" onClick={() => setOpen(false)}>My reviews</MobileLink>
+                <MobileLink href="/my/profile" onClick={() => setOpen(false)}>Profile</MobileLink>
+                <MobileLink href="/my/security" onClick={() => setOpen(false)}>Security</MobileLink>
                 <form action={signOutAction} className="mt-2">
                   <button className="w-full rounded-lg border px-4 py-2.5 text-left font-medium text-muted hover:bg-mint">
                     Logout

@@ -15,7 +15,8 @@ import {
 } from '@/lib/badge-server'
 
 /**
- * Public badge image: /api/badge/<slug>?variant=card|strip|micro&theme=light|dark
+ * Public badge image:
+ * /api/badge/<slug>?variant=card|square|seal|tile|strip|banner|micro&theme=light|dark
  * Embedded with a plain <img> on the business's own website, so it is
  * open to any origin and cached at the edge.
  */

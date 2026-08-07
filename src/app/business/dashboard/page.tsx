@@ -3,6 +3,8 @@ import { Star, MessageSquareReply, Building2, MailWarning } from 'lucide-react'
 import { db } from '@/lib/db'
 import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
+import { AskForReview } from '@/components/ask-for-review'
+import { askTargets } from '@/lib/review-link'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +42,8 @@ export default async function OverviewPage() {
   }
 
   const ids = businesses.map((b) => b.id)
+  // an unapproved listing has no public page yet, so there is nothing to share
+  const targets = await askTargets(businesses.filter((b) => b.status === 'LIVE'))
   const totalReviews = businesses.reduce((s, b) => s + b.ratingCount, 0)
   const weighted = businesses.reduce((s, b) => s + Number(b.ratingAvg) * b.ratingCount, 0)
   const avg = totalReviews ? weighted / totalReviews : 0
@@ -85,9 +89,12 @@ export default async function OverviewPage() {
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          Your businesses
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            Your businesses
+          </h2>
+          <AskForReview businesses={targets} />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {businesses.map((b) => (
             <div key={b.id} className="rounded-xl border bg-surface p-5">
@@ -126,6 +133,10 @@ export default async function OverviewPage() {
                 >
                   Edit
                 </Link>
+                <AskForReview
+                  businesses={targets.filter((t) => t.slug === b.slug)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-background px-3 py-1.5 font-medium hover:bg-mint"
+                />
               </div>
             </div>
           ))}

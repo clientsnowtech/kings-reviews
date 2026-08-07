@@ -5,13 +5,14 @@ import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { db } from './db'
 import { loginSchema } from './validations'
+import { verifyCode, parseBackupCodes, spendBackupCode } from './totp'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   providers: [
     Credentials({
-      credentials: { email: {}, password: {} },
+      credentials: { email: {}, password: {}, code: {} },
       async authorize(creds) {
         const parsed = loginSchema.safeParse(creds)
         if (!parsed.success) return null
@@ -21,6 +22,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user?.password) return null
         const ok = await bcrypt.compare(parsed.data.password, user.password)
         if (!ok) return null
+
+        // Second factor, when the account has one. The login form asks for the
+        // code in a second step (see loginPrecheck) and sends it back here, so
+        // the password alone never mints a session.
+        if (user.twoFactorEnabled) {
+          const code = typeof creds?.code === 'string' ? creds.code : ''
+          if (!code) return null
+
+          const byApp = user.twoFactorSecret ? verifyCode(user.twoFactorSecret, code) : false
+          if (!byApp) {
+            const left = spendBackupCode(parseBackupCodes(user.twoFactorCodes), code)
+            if (!left) return null
+            // a backup code is spent the moment it works
+            await db.user.update({
+              where: { id: user.id },
+              data: { twoFactorCodes: JSON.stringify(left) },
+            })
+          }
+        }
+
         return {
           id: user.id,
           name: user.name,

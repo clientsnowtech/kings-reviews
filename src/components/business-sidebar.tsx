@@ -16,9 +16,12 @@ const LINKS = [
 export function BusinessSidebar({
   unreplied,
   newReviews = 0,
+  pendingReviews = 0,
 }: {
   unreplied: number
   newReviews?: number
+  /** reviews waiting for the owner to approve them — nothing is public yet */
+  pendingReviews?: number
 }) {
   const pathname = usePathname()
 
@@ -43,7 +46,20 @@ export function BusinessSidebar({
                 title={`${newReviews} new since last visit`}
               />
             )}
-            {href === '/business/dashboard/reviews' && unreplied > 0 && (
+            {/* approvals outrank replies: an unapproved review is invisible to
+                everyone until the owner acts on it */}
+            {href === '/business/dashboard/reviews' && pendingReviews > 0 && (
+              <span
+                className={cn(
+                  'ml-auto rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
+                  active ? 'bg-white/25 text-white' : 'bg-amber-500 text-white',
+                )}
+                title={`${pendingReviews} awaiting your approval`}
+              >
+                {pendingReviews}
+              </span>
+            )}
+            {href === '/business/dashboard/reviews' && pendingReviews === 0 && unreplied > 0 && (
               <span
                 className={cn(
                   'ml-auto rounded-full px-1.5 py-0.5 text-[11px] font-semibold',

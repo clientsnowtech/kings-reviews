@@ -66,6 +66,12 @@ export default async function AdminBusinesses({
           >
             Add business
           </Link>
+          <Link
+            href="/admin/businesses/import"
+            className="rounded-lg border px-3 py-1.5 text-sm font-medium text-muted hover:bg-mint"
+          >
+            Import CSV
+          </Link>
           <a
             href="/admin/export/businesses"
             className="rounded-lg border px-3 py-1.5 text-sm font-medium text-muted hover:bg-mint"

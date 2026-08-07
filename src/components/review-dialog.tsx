@@ -7,7 +7,12 @@ import { Modal } from '@/components/modal'
 import { LoginPanel } from '@/components/login-panel'
 import { ReviewForm } from '@/components/review-form'
 
-type Existing = { rating: number; title: string; body: string } | null
+type Existing = {
+  rating: number
+  title: string
+  body: string
+  status?: 'LIVE' | 'PENDING' | 'REMOVED'
+} | null
 
 /**
  * Google's flow: the stars and the button open one dialog. Signed out, it
@@ -101,6 +106,16 @@ export function ReviewDialog({
         <p className="mt-1 text-sm text-muted">
           {existing ? 'Change your rating or wording any time.' : 'Tell others how it went.'}
         </p>
+        {existing?.status === 'REMOVED' && (
+          <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-danger">
+            This review was not published. Rewrite it and it goes back for approval.
+          </p>
+        )}
+        {existing?.status === 'PENDING' && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Waiting for approval — only you can see it until {businessName} or our team accepts it.
+          </p>
+        )}
 
         <div className="mt-3 flex justify-center gap-1">
           {[1, 2, 3, 4, 5].map((n) => (

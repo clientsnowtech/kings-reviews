@@ -2,12 +2,10 @@ import { Skeleton, LoadingLabel } from '@/components/skeleton'
 
 export default function MyReviewsLoading() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div>
       <LoadingLabel>Loading your reviews…</LoadingLabel>
 
-      <Skeleton className="h-8 w-48" />
-
-      <div className="mt-8 space-y-4">
+      <div className="space-y-4">
         {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className="rounded-xl border bg-surface p-5">
             <div className="flex items-center justify-between">
