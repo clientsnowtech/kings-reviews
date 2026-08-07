@@ -12,12 +12,21 @@ const MAX_IMAGES = 4
 export function ReviewForm({
   businessId,
   existing,
+  initialRating,
+  bare,
+  onDone,
 }: {
   businessId: string
   existing?: { rating: number; title: string; body: string } | null
+  /** star the user clicked before the form opened */
+  initialRating?: number
+  /** drop the card chrome — the dialog draws its own */
+  bare?: boolean
+  /** called once the review is saved, so a dialog can close itself */
+  onDone?: () => void
 }) {
   const [state, action, pending] = useActionState(createReview, initial)
-  const [rating, setRating] = useState(existing?.rating ?? 0)
+  const [rating, setRating] = useState(initialRating || existing?.rating || 0)
   const [hover, setHover] = useState(0)
   const [previews, setPreviews] = useState<string[]>([])
   const [dropped, setDropped] = useState(0)
@@ -27,6 +36,14 @@ export function ReviewForm({
   const live = useRef<string[]>([])
   live.current = previews
   useEffect(() => () => live.current.forEach(URL.revokeObjectURL), [])
+
+  // held in a ref so a parent that re-renders on every keystroke cannot make
+  // this fire twice
+  const done = useRef(onDone)
+  done.current = onDone
+  useEffect(() => {
+    if (state.ok) done.current?.()
+  }, [state.ok])
 
   function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target
@@ -59,13 +76,15 @@ export function ReviewForm({
   const shown = hover || rating
 
   return (
-    <form action={action} className="rounded-xl border bg-surface p-6">
-      <h3 className="text-lg font-bold">{existing ? 'Edit your review' : 'Write a review'}</h3>
+    <form action={action} className={bare ? '' : 'rounded-xl border bg-surface p-6'}>
+      {!bare && (
+        <h3 className="text-lg font-bold">{existing ? 'Edit your review' : 'Write a review'}</h3>
+      )}
 
       <input type="hidden" name="businessId" value={businessId} />
       <input type="hidden" name="rating" value={rating} />
 
-      <div className="mt-4 flex gap-1">
+      <div className={`flex gap-1 ${bare ? '' : 'mt-4'}`}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}

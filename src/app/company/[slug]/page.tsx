@@ -12,14 +12,13 @@ import {
   Map as MapIcon,
   ChevronRight,
   ChevronLeft,
-  PenLine,
   Award,
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { tierFor } from '@/lib/badge'
 import { auth } from '@/lib/auth'
 import { Stars } from '@/components/stars'
-import { ReviewForm } from '@/components/review-form'
+import { ReviewDialog } from '@/components/review-dialog'
 import { PhotoLightbox } from '@/components/photo-lightbox'
 import { ShareButton } from '@/components/share-button'
 import { HelpfulButton } from '@/components/helpful-button'
@@ -393,12 +392,13 @@ export default async function CompanyPage({
                 {fr ? `No ${fr}★ reviews yet.` : `No reviews yet. Be the first to review ${b.name}.`}
               </p>
               {!isOwner && (
-                <a
-                  href="#write-review"
-                  className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-5 text-sm font-medium text-white transition hover:bg-brand-strong"
-                >
-                  <PenLine size={15} /> Write a review
-                </a>
+                <ReviewDialog
+                  businessId={b.id}
+                  businessName={b.name}
+                  slug={b.slug}
+                  signedIn={!!session?.user}
+                  existing={myReview}
+                />
               )}
             </div>
           ) : (
@@ -540,21 +540,15 @@ export default async function CompanyPage({
               </Link>
               .
             </div>
-          ) : session?.user ? (
-            <ReviewForm
-              businessId={b.id}
-              existing={myReview ? { rating: myReview.rating, title: myReview.title, body: myReview.body } : null}
-            />
           ) : (
-            <div className="rounded-xl border bg-surface p-6 text-center shadow-soft">
-              <p className="text-sm text-muted">Share your experience with {b.name}.</p>
-              <Link
-                href={`/login?next=/company/${b.slug}`}
-                className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-6 text-sm font-medium text-white transition hover:bg-brand-strong"
-              >
-                <PenLine size={16} /> Log in to review
-              </Link>
-            </div>
+            <ReviewDialog
+              variant="card"
+              businessId={b.id}
+              businessName={b.name}
+              slug={b.slug}
+              signedIn={!!session?.user}
+              existing={myReview}
+            />
           )}
         </aside>
       </div>
