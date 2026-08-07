@@ -94,10 +94,6 @@ export default async function Home() {
     }),
   ])
 
-  const featured = topRated[0]
-  const chip1 = recent[0]
-  const chip2 = recent[1]
-
   return (
     <div>
       <script
@@ -107,16 +103,13 @@ export default async function Home() {
 
       {/* ============ HERO ============ */}
       <section className="hero-wash border-b">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 lg:grid-cols-2 lg:py-24">
-          {/* left */}
-          <div>
+        <div className="mx-auto max-w-6xl px-4 py-16 lg:py-24">
+          <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-white/70 px-3 py-1 text-xs font-semibold text-brand shadow-soft">
               <ShieldCheck size={14} /> India’s trusted review directory
             </span>
             <h1 className="mt-5 text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-              Real reviews.
-              <br />
-              Real <span className="text-brand">trust.</span>
+              Real reviews. Real <span className="text-brand">trust.</span>
               <br />
               Real growth.
             </h1>
@@ -124,7 +117,7 @@ export default async function Home() {
               Discover businesses across India through honest customer reviews — and share your own.
             </p>
 
-            <form action="/search" className="relative mt-8 max-w-md">
+            <form action="/search" className="relative mt-8 w-full max-w-xl">
               <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 name="q"
@@ -136,7 +129,7 @@ export default async function Home() {
               </button>
             </form>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
               <div className="flex items-center gap-2">
                 <Stars value={4.8} size="md" />
                 <span className="text-sm font-semibold">4.8/5</span>
@@ -150,91 +143,7 @@ export default async function Home() {
               </Link>
             </div>
           </div>
-
-          {/* right — composed mockup */}
-          <div className="relative mx-auto hidden h-[440px] w-full max-w-md lg:block">
-            {featured && (
-              <div className="animate-floaty absolute inset-x-0 top-6 overflow-hidden rounded-3xl border bg-white shadow-float">
-                <div className="relative h-36">
-                  {featured.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={featured.cover} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    // A stock photo here showed something unrelated to the business.
-                    <div
-                      className="grid h-full w-full place-items-center"
-                      style={{ background: `linear-gradient(135deg, ${colorFrom(featured.slug)}, var(--brand-strong))` }}
-                    >
-                      <CategoryIcon
-                        category={featured.category?.name}
-                        size={56}
-                        className="text-white/30"
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 px-5 pb-5 pt-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={featured.logo ?? ''}
-                    alt=""
-                    className="-mt-10 h-16 w-16 rounded-2xl border-4 border-white object-cover shadow-soft"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1 font-bold">
-                      <span className="truncate">{featured.name}</span>
-                      <BadgeCheck size={16} className="shrink-0 text-brand" />
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1.5">
-                      <Stars value={Number(featured.ratingAvg)} size="sm" />
-                      <span className="text-xs text-muted">{Number(featured.ratingAvg).toFixed(1)} · {featured.ratingCount}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {chip1 && (
-              <div className="animate-floaty absolute -left-4 bottom-8 w-60 rounded-2xl border bg-white p-4 shadow-float" style={{ animationDelay: '1.2s' }}>
-                <Stars value={chip1.rating} size="sm" />
-                <p className="mt-2 line-clamp-2 text-sm font-medium">“{chip1.title}”</p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted">
-                  <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold text-white" style={{ background: colorFrom(chip1.user.email ?? chip1.id) }}>
-                    {initials(chip1.user.name ?? chip1.user.email)}
-                  </span>
-                  {chip1.user.name ?? 'Verified customer'}
-                </div>
-              </div>
-            )}
-
-            {featured && (
-              <div className="animate-floaty absolute -right-4 top-0 w-52 rounded-2xl border bg-white p-4 shadow-float" style={{ animationDelay: '2.4s' }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted">TrustScore</span>
-                  <ShieldCheck size={15} className="text-brand" />
-                </div>
-                <div className="mt-1 flex items-end gap-1">
-                  <span className="text-3xl font-extrabold leading-none">{Number(featured.ratingAvg).toFixed(1)}</span>
-                  <span className="pb-0.5 text-xs text-muted">/ 5</span>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {[featured.rating5, featured.rating4, featured.rating3].map((n, i) => {
-                    const pct = featured.ratingCount ? (n / featured.ratingCount) * 100 : 0
-                    return (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <span className="w-3 text-[10px] text-muted">{5 - i}</span>
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-mint">
-                          <div className="h-full rounded-full bg-star" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
-
       </section>
 
       {/* ============ STATS BAND ============ */}
