@@ -178,6 +178,16 @@ export default async function CompanyPage({
   const tier = tierFor(b.ratingCount, avg)
   const showTier = tier.key !== 'rated'
 
+  // one pill, rendered beside the logo on a phone and beside the name on a
+  // desktop — written once so the two placements cannot drift apart
+  const verifiedPill = b.verifiedAt ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+      <BadgeCheck size={13} /> Verified
+    </span>
+  ) : (
+    <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">Unverified</span>
+  )
+
   // derive social / contact links from free-form fields
   const waDigits = b.whatsapp?.replace(/\D/g, '')
   const siteHref = externalUrl(b.website)
@@ -273,8 +283,14 @@ export default async function CompanyPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1 text-xs text-muted">
+      {/* Breadcrumb — desktop only. On a phone it wraps above the fold and
+          pushes the name and rating down for no navigational gain; the back
+          gesture is what people use there. Hidden with CSS rather than dropped,
+          so the crawler still gets the trail. */}
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-4 hidden flex-wrap items-center gap-1 text-xs text-muted sm:flex"
+      >
         <Link href="/" className="hover:text-brand">Home</Link>
         <ChevronRight size={13} />
         <Link href={`/category/${b.category.slug}`} className="hover:text-brand">{b.category.name}</Link>
@@ -293,34 +309,33 @@ export default async function CompanyPage({
         )}
 
         <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-end">
-          {b.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={b.logo}
-              alt={`${b.name} logo`}
-              className="-mt-16 h-24 w-24 shrink-0 rounded-2xl border-4 border-surface bg-surface object-cover shadow-soft"
-            />
-          ) : (
-            <span
-              className="-mt-16 grid h-24 w-24 shrink-0 place-items-center rounded-2xl border-4 border-surface text-2xl font-bold text-white shadow-soft"
-              style={{ background: colorFrom(b.slug) }}
-            >
-              {initials(b.name)}
-            </span>
-          )}
+          {/* On a phone the status rides beside the logo — it is the first thing
+              worth knowing, and down beside the name it cost a whole line.
+              `sm:contents` dissolves this wrapper on desktop, where the logo is
+              a flex child of the row itself. */}
+          <div className="flex items-center gap-3 sm:contents">
+            {b.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.logo}
+                alt={`${b.name} logo`}
+                className="-mt-16 h-24 w-24 shrink-0 rounded-2xl border-4 border-surface bg-surface object-cover shadow-soft"
+              />
+            ) : (
+              <span
+                className="-mt-16 grid h-24 w-24 shrink-0 place-items-center rounded-2xl border-4 border-surface text-2xl font-bold text-white shadow-soft"
+                style={{ background: colorFrom(b.slug) }}
+              >
+                {initials(b.name)}
+              </span>
+            )}
+            <span className="sm:hidden">{verifiedPill}</span>
+          </div>
 
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">{b.name}</h1>
-              {b.verifiedAt ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
-                  <BadgeCheck size={13} /> Verified
-                </span>
-              ) : (
-                <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">
-                  Unverified
-                </span>
-              )}
+              <span className="max-sm:hidden">{verifiedPill}</span>
               {showTier && (
                 <span
                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-white"
@@ -333,13 +348,15 @@ export default async function CompanyPage({
             </div>
             {b.tagline && <p className="mt-1 text-sm text-foreground/80">{b.tagline}</p>}
 
-            {/* Every trade this business is filed under, primary first. */}
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* Every trade this business is filed under, primary first. Two
+                even columns on a phone: ragged pill widths read as noise on a
+                narrow screen, a grid reads as a list. */}
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
               {[b.category, ...b.extraCategories].map((c) => (
                 <Link
                   key={c.slug}
                   href={`/category/${c.slug}`}
-                  className="rounded-full border bg-surface px-2.5 py-0.5 text-xs font-medium text-muted transition hover:border-brand hover:text-brand"
+                  className="truncate rounded-full border bg-surface px-2.5 py-1 text-center text-xs font-medium text-muted transition hover:border-brand hover:text-brand sm:py-0.5"
                 >
                   {c.name}
                 </Link>
@@ -381,14 +398,16 @@ export default async function CompanyPage({
           </div>
         </div>
 
-        {/* contact / social chips + share */}
-        <div className="flex flex-wrap gap-2 border-t bg-background/40 px-6 py-4">
+        {/* Contact / social chips + share. Two even columns on a phone — these
+            are the buttons people came to press, and a ragged wrap leaves half
+            of them at odd widths and easy to mis-tap. */}
+        <div className="grid grid-cols-2 gap-2 border-t bg-background/40 px-6 py-4 sm:flex sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto">
           {contacts.map((c) => (
             <a
               key={c.label}
               href={c.href}
               {...(c.external && { target: '_blank', rel: 'noopener noreferrer nofollow' })}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-surface px-3 py-1.5 text-sm text-foreground/80 transition hover:border-brand hover:bg-brand hover:text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border bg-surface px-3 py-2 text-sm text-foreground/80 transition hover:border-brand hover:bg-brand hover:text-white sm:justify-start sm:py-1.5"
             >
               <c.icon size={15} /> {c.label}
             </a>
@@ -398,14 +417,16 @@ export default async function CompanyPage({
       </div>
 
       {b.description && (
-        <p className="mt-6 rounded-2xl border bg-surface p-6 text-sm leading-relaxed text-foreground/90 shadow-soft">
+        <p className="mt-6 hyphens-auto rounded-2xl border bg-surface p-6 text-justify text-sm leading-relaxed text-foreground/90 shadow-soft">
           {b.description}
         </p>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* reviews column */}
-        <div className="order-2 lg:order-1">
+        {/* Reviews column. `min-w-0` because a grid item defaults to
+            min-width:auto, so the swipeable review track would stretch the
+            whole page instead of scrolling inside itself. */}
+        <div className="order-2 min-w-0 lg:order-1">
           <h2 id="reviews" className="mb-4 scroll-mt-20 text-xl font-bold">
             Reviews {b.ratingCount > 0 && <span className="text-muted">({b.ratingCount})</span>}
           </h2>
@@ -448,9 +469,12 @@ export default async function CompanyPage({
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            /* A phone swipes through the reviews instead of scrolling past a
+               dozen full-height cards to reach the rest of the page; snap
+               points stop it landing between two. Desktop keeps the stack. */
+            <div className="max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:gap-3 max-sm:overflow-x-auto max-sm:pb-2 sm:space-y-4">
               {reviews.map((r) => (
-                <article key={r.id} className="rounded-xl border bg-surface p-5 shadow-soft transition hover:shadow-float">
+                <article key={r.id} className="rounded-xl border bg-surface p-5 shadow-soft transition hover:shadow-float max-sm:w-[88%] max-sm:shrink-0 max-sm:snap-start">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span

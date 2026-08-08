@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Search, SlidersHorizontal, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { BusinessCard } from '@/components/business-card'
+import { SearchableSelect } from '@/components/searchable-select'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,7 @@ const PER_PAGE = 24
 type SP = {
   q?: string
   category?: string
+  state?: string
   city?: string
   sort?: string
   page?: string
@@ -87,6 +89,7 @@ export default async function BusinessesPage({
           ],
         }
       : {}),
+    ...(sp.state ? { state: sp.state } : {}),
     ...(sp.city ? { city: sp.city } : {}),
     ...(query
       ? {
@@ -99,7 +102,7 @@ export default async function BusinessesPage({
       : {}),
   }
 
-  const [total, businesses, cityRows] = await Promise.all([
+  const [total, businesses, cityRows, stateRows] = await Promise.all([
     db.business.count({ where }),
     db.business.findMany({
       where,
@@ -108,16 +111,25 @@ export default async function BusinessesPage({
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
     }),
+    // Cities are narrowed to the chosen state — a flat list of every city in
+    // the country is unusable, and half of it cannot match anyway.
     db.business.findMany({
-      where: { status: 'LIVE' },
+      where: { status: 'LIVE', ...(sp.state ? { state: sp.state } : {}) },
       distinct: ['city'],
       select: { city: true },
       orderBy: { city: 'asc' },
+    }),
+    db.business.findMany({
+      where: { status: 'LIVE' },
+      distinct: ['state'],
+      select: { state: true },
+      orderBy: { state: 'asc' },
     }),
   ])
 
   const pages = Math.max(1, Math.ceil(total / PER_PAGE))
   const cities = cityRows.map((c) => c.city)
+  const states = stateRows.map((s) => s.state)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -125,7 +137,8 @@ export default async function BusinessesPage({
         <h1 className="text-3xl font-bold">All businesses</h1>
         <p className="mt-1 text-muted">
           {total.toLocaleString()} verified {total === 1 ? 'listing' : 'listings'}
-          {sp.city ? ` in ${sp.city}` : ''}
+          {sp.city ? ` in ${sp.city}` : sp.state ? ` in ${sp.state}` : ''}
+          {sp.city && sp.state ? `, ${sp.state}` : ''}
           {query ? ` matching “${query}”` : ''}
         </p>
       </div>
@@ -133,6 +146,7 @@ export default async function BusinessesPage({
       {/* search */}
       <form action="/businesses" className="relative mt-6">
         {sp.category && <input type="hidden" name="category" value={sp.category} />}
+        {sp.state && <input type="hidden" name="state" value={sp.state} />}
         {sp.city && <input type="hidden" name="city" value={sp.city} />}
         {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
         <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -178,34 +192,57 @@ export default async function BusinessesPage({
           </Link>
         ))}
 
-        {cities.length > 1 && (
-          <div className="ml-auto flex items-center gap-2">
-            <label htmlFor="city" className="text-muted">
-              City
-            </label>
-            {/* progressive-enhancement dropdown: submits via GET, resets page */}
-            <form action="/businesses" className="contents">
-              {query && <input type="hidden" name="q" value={query} />}
-              {sp.category && <input type="hidden" name="category" value={sp.category} />}
-              <input type="hidden" name="sort" value={sortKey} />
-              <select
-                id="city"
-                name="city"
-                defaultValue={sp.city ?? ''}
-                className="h-9 rounded-full border bg-surface px-3 outline-none focus:border-brand"
-              >
-                <option value="">All cities</option>
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <button className="rounded-full border bg-surface px-3 py-1.5 hover:border-brand">Go</button>
-            </form>
-          </div>
-        )}
       </div>
+
+      {/* Location filter. India has hundreds of cities in the directory, so
+          both fields type-to-filter rather than making anyone scroll a list.
+          Plain GET, so it works before any JavaScript arrives. */}
+      {(states.length > 1 || cities.length > 1) && (
+        <form
+          action="/businesses"
+          className="mt-4 grid gap-3 rounded-xl border bg-surface p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+        >
+          {query && <input type="hidden" name="q" value={query} />}
+          {sp.category && <input type="hidden" name="category" value={sp.category} />}
+          <input type="hidden" name="sort" value={sortKey} />
+
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-sm text-muted">
+              <MapPin size={14} /> State
+            </label>
+            <SearchableSelect
+              name="state"
+              options={states}
+              defaultValue={sp.state ?? ''}
+              placeholder="All states"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-muted">City</label>
+            <SearchableSelect
+              name="city"
+              options={cities}
+              defaultValue={sp.city ?? ''}
+              placeholder={sp.state ? `All cities in ${sp.state}` : 'All cities'}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button className="h-11 rounded-lg bg-brand px-6 text-sm font-medium text-white transition hover:bg-brand-strong">
+              Apply
+            </button>
+            {(sp.state || sp.city) && (
+              <Link
+                href={qs(sp, { state: undefined, city: undefined, page: '1' })}
+                className="inline-flex h-11 items-center rounded-lg border px-4 text-sm text-muted transition hover:border-brand hover:text-brand"
+              >
+                Clear
+              </Link>
+            )}
+          </div>
+        </form>
+      )}
 
       {/* results */}
       {businesses.length === 0 ? (
