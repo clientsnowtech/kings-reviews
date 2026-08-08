@@ -173,7 +173,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
           id={listId}
           role="listbox"
           aria-label="Search suggestions"
-          className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border bg-white shadow-float"
+          className="animate-fade-down absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border bg-white shadow-float"
         >
           {empty ? (
             <p className="px-4 py-6 text-center text-sm text-muted">
@@ -197,7 +197,15 @@ export function NavSearch({ className = '' }: { className?: string }) {
                     >
                       {b.logo ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.logo} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                        <img
+                          src={b.logo}
+                          alt=""
+                          width={36}
+                          height={36}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                        />
                       ) : (
                         <span
                           className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"

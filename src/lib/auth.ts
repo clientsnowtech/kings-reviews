@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { db } from './db'
 import { loginSchema } from './validations'
 import { verifyCode, parseBackupCodes, spendBackupCode } from './totp'
+import { callerIp, loginAttempt } from './rate-limit'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
@@ -13,9 +14,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {}, code: {} },
-      async authorize(creds) {
+      async authorize(creds, request) {
         const parsed = loginSchema.safeParse(creds)
         if (!parsed.success) return null
+
+        // This endpoint is reachable without the login form, so the precheck's
+        // limiter is not enough on its own — an attacker would simply POST here
+        // and guess forever. Same buckets as loginPrecheck(), so the two paths
+        // share one allowance instead of handing an attacker both.
+        if (!loginAttempt(parsed.data.email, await callerIp(request.headers))) return null
+
         const user = await db.user.findUnique({
           where: { email: parsed.data.email },
         })

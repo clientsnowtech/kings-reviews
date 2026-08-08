@@ -70,6 +70,11 @@ export const BADGE_VARIANTS: BadgeVariant[] = [
 ]
 export const BADGE_THEMES: BadgeTheme[] = ['light', 'dark']
 
+/**
+ * Nominal box per variant. `micro` is the exception — it shrink-wraps its
+ * content, so this width is only a fallback; ask badgeSize() for the real one
+ * whenever the business data is at hand.
+ */
 export const BADGE_SIZES: Record<BadgeVariant, { width: number; height: number }> = {
   card: { width: 220, height: 250 },
   square: { width: 180, height: 180 },
@@ -220,6 +225,19 @@ function starRow(x: number, y: number, size: number, gap: number, value: number,
     <g clip-path="url(#ti-stars)">${row(STAR_FILL)}</g>`
 }
 
+/**
+ * Rough advance width for the system font stack. There is no text metric API
+ * on the server, so anything that sizes itself to its content measures here.
+ * Deliberately a touch generous — over-estimating adds a hair of padding,
+ * under-estimating clips.
+ */
+function textWidth(s: string, fontSize: number, bold = false): number {
+  const glyph = bold ? 0.63 : 0.59
+  let w = 0
+  for (const ch of s) w += fontSize * (/[.,()\s]/.test(ch) ? 0.33 : glyph)
+  return w
+}
+
 /** Width a tier pill needs so the label never clips. */
 function pillWidth(tier: TierDef, fontSize: number): number {
   return Math.round(tier.label.length * (fontSize * 0.72) + fontSize * 2)
@@ -333,16 +351,43 @@ function bannerBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number):
     ${brandMark(w - 40, h - 40, 24)}`
 }
 
+/**
+ * `micro` packs its row left to right and ends where the pill ends — a fixed
+ * box would have to be wide enough for a six-figure review count, leaving a
+ * hole in the middle of every badge that has fewer.
+ */
+function microLayout(d: BadgeInput, tier: TierDef, avg: number) {
+  const starW = 14 * 5 + 3 * 4
+  const starX = 32
+  const avgText = avg.toFixed(1)
+  const countText = `(${formatCount(d.ratingCount)})`
+  const avgX = starX + starW + 6
+  const countX = avgX + textWidth(avgText, 12, true) + 5
+  const pillW = pillWidth(tier, 8.5)
+  const pillX = countX + textWidth(countText, 11) + 10
+  return {
+    starX,
+    avgX: round(avgX, 1),
+    avgText,
+    countX: round(countX, 1),
+    countText,
+    pillX: round(pillX, 1),
+    pillW,
+    width: Math.round(pillX + pillW + 12),
+  }
+}
+
 function microBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
-  const { width: w, height: h } = BADGE_SIZES.micro
+  const { height: h } = BADGE_SIZES.micro
+  const m = microLayout(d, tier, avg)
   // brand mark takes the left slot instead of a medal — at 34px tall the tier
   // reads from its pill, and a second disc would just be noise
-  return `${frame(w, h, 17, theme)}
+  return `${frame(m.width, h, 17, theme)}
     ${brandMark(10, 10, 14)}
-    ${starRow(32, 10, 14, 3, avg, theme)}
-    <text x="120" y="21.5" font-size="12" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
-    <text x="146" y="21.5" font-size="11" fill="${theme.muted}">(${formatCount(d.ratingCount)})</text>
-    ${pill(w - 12 - pillWidth(tier, 8.5), 8, 18, tier, 8.5)}`
+    ${starRow(m.starX, 10, 14, 3, avg, theme)}
+    <text x="${m.avgX}" y="21.5" font-size="12" font-weight="700" fill="${theme.fg}">${m.avgText}</text>
+    <text x="${m.countX}" y="21.5" font-size="11" fill="${theme.muted}">${esc(m.countText)}</text>
+    ${pill(m.pillX, 8, 18, tier, 8.5)}`
 }
 
 // ------------------------------------------------------------------ render
@@ -362,10 +407,23 @@ function uid(d: BadgeInput): string {
   return h.toString(36)
 }
 
+/**
+ * Real rendered box for one badge. Every variant but `micro` is a fixed size;
+ * `micro` sizes itself to its content, so embed snippets must ask here rather
+ * than reading BADGE_SIZES directly.
+ */
+export function badgeSize(d: BadgeInput): { width: number; height: number } {
+  const box = BADGE_SIZES[d.variant]
+  if (d.variant !== 'micro') return box
+  const avg = Math.max(0, Math.min(5, d.ratingAvg))
+  const { width } = microLayout(d, tierFor(d.ratingCount, d.ratingAvg), avg)
+  return { width, height: box.height }
+}
+
 export function renderBadgeSvg(d: BadgeInput): string {
   const tier = tierFor(d.ratingCount, d.ratingAvg)
   const theme = THEMES[d.theme]
-  const { width, height } = BADGE_SIZES[d.variant]
+  const { width, height } = badgeSize(d)
   const avg = Math.max(0, Math.min(5, d.ratingAvg))
   const label = `${badgeAltText(d)} · ${tier.label} badge`
 

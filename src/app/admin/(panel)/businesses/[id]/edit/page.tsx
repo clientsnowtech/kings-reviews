@@ -1,31 +1,48 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { db } from '@/lib/db'
-import { adminUpdateBusiness } from '@/lib/admin-actions'
+import { requireAdmin } from '@/lib/admin'
+import { adminRenameBusiness } from '@/lib/admin-actions'
 import { SubmitButton } from '@/components/submit-button'
-import { CategoryPicker } from '@/components/category-picker'
-import { LocationPicker } from '@/components/location-picker'
+import { BusinessEditForm } from '@/components/business-edit-form'
+import { BusinessHoursForm } from '@/components/business-hours-form'
+import { BusinessGallery } from '@/components/business-gallery'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Admin edit — the owner's own screens, not a copy of them.
+ *
+ * The panel used to carry a shorter form of its own, so an admin could not
+ * touch hours, photos, the logo or half the profile fields, and every field
+ * added for owners had to be added here again or quietly go missing. Now the
+ * same components run in both places; only the name sits outside them, because
+ * owners cannot rename a listing that already carries its reviews.
+ */
 export default async function AdminEditBusiness({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ duplicate?: string; slug?: string }>
 }) {
+  await requireAdmin()
+
   const { id } = await params
-  const [business, categories] = await Promise.all([
-    db.business.findUnique({
-      where: { id },
-      include: { extraCategories: { select: { id: true } } },
-    }),
+  const { duplicate, slug: dupSlug } = await searchParams
+
+  const [business, categories, hours, images, extras] = await Promise.all([
+    db.business.findUnique({ where: { id }, include: { owner: { select: { email: true } } } }),
     db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    db.businessHour.findMany({ where: { businessId: id }, orderBy: { day: 'asc' } }),
+    db.businessImage.findMany({ where: { businessId: id }, orderBy: { sort: 'asc' } }),
+    db.category.findMany({ where: { extraFor: { some: { id } } }, select: { id: true } }),
   ])
   if (!business) notFound()
 
-  const field = 'h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand'
-  const label = 'mb-1 block text-sm font-medium'
+  const field =
+    'h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand'
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -36,57 +53,82 @@ export default async function AdminEditBusiness({
         <ArrowLeft size={15} /> Back to businesses
       </Link>
 
-      <h2 className="text-xl font-bold">Edit business</h2>
-
-      <form action={adminUpdateBusiness} className="space-y-4 rounded-2xl border bg-surface p-6">
-        <input type="hidden" name="id" value={business.id} />
-
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <label className={label}>Name</label>
-          <input name="name" defaultValue={business.name} required className={field} />
+          <h2 className="text-xl font-bold">Edit business</h2>
+          <p className="text-sm text-muted">
+            Owned by {business.owner.email} · the owner sees these same forms.
+          </p>
         </div>
-
-        <CategoryPicker
-          categories={categories}
-          defaultCategoryId={business.categoryId}
-          defaultExtraIds={business.extraCategories.map((c) => c.id)}
-          extraName="extraCategoryIds"
-        />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className={label}>Website</label>
-            <input name="website" defaultValue={business.website ?? ''} className={field} />
-          </div>
-          <div>
-            <label className={label}>Email</label>
-            <input name="email" type="email" defaultValue={business.email} required className={field} />
-          </div>
-          <div>
-            <label className={label}>Phone</label>
-            <input name="phone" defaultValue={business.phone} className={field} />
-          </div>
-        </div>
-
-        <LocationPicker defaultState={business.state} defaultCity={business.city} />
-
-        <div>
-          <label className={label}>Description</label>
-          <textarea
-            name="description"
-            defaultValue={business.description ?? ''}
-            rows={4}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-        </div>
-
-        <SubmitButton
-          pendingLabel="Saving…"
-          className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-strong"
+        <Link
+          href={`/company/${business.slug}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-muted hover:bg-mint"
         >
-          Save changes
-        </SubmitButton>
+          <ExternalLink size={14} /> Public page
+        </Link>
+      </div>
+
+      {duplicate && (
+        <div className="rounded-xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
+          <p className="font-medium">Not renamed — this would duplicate another listing.</p>
+          <p className="mt-1">{duplicate}</p>
+          {dupSlug && (
+            <Link
+              href={`/company/${dupSlug}`}
+              className="mt-2 inline-block font-medium underline underline-offset-2"
+            >
+              Open the other listing
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* the one field owners never get */}
+      <form action={adminRenameBusiness} className="rounded-2xl border bg-surface p-6">
+        <input type="hidden" name="id" value={business.id} />
+        <label className="mb-1 block text-sm font-medium">Name</label>
+        <div className="flex gap-2">
+          <input name="name" defaultValue={business.name} required minLength={2} className={field} />
+          <SubmitButton
+            pendingLabel="Saving…"
+            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+          >
+            Rename
+          </SubmitButton>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Owners cannot rename their own listing — its reviews belong to the business it was.
+        </p>
       </form>
+
+      <BusinessEditForm
+        business={{
+          id: business.id,
+          categoryId: business.categoryId,
+          email: business.email,
+          phone: business.phone,
+          whatsapp: business.whatsapp,
+          website: business.website,
+          tagline: business.tagline,
+          description: business.description,
+          foundedYear: business.foundedYear,
+          instagram: business.instagram,
+          facebook: business.facebook,
+          address: business.address,
+          city: business.city,
+          state: business.state,
+          pincode: business.pincode,
+          mapUrl: business.mapUrl,
+          logo: business.logo,
+          cover: business.cover,
+        }}
+        categories={categories}
+        extraCategoryIds={extras.map((c) => c.id)}
+      />
+
+      <BusinessHoursForm businessId={business.id} hours={hours} />
+
+      <BusinessGallery businessId={business.id} images={images} />
     </div>
   )
 }

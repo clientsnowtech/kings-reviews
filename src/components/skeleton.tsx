@@ -2,7 +2,9 @@ import { cn } from '@/lib/utils'
 
 /** Base shimmer block. Compose these to mirror the real layout so nothing shifts on swap. */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded bg-border', className)} />
+  // `.skeleton` (globals.css) sweeps a highlight across instead of pulsing — at
+  // this contrast a pulse reads as a broken element rather than a pending one.
+  return <div className={cn('skeleton rounded bg-border', className)} />
 }
 
 /** Mirrors <BusinessCard /> — 56px logo + title, stars row, meta row. */

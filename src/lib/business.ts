@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from './auth'
 import { db } from './db'
 import { actingOwnerId } from './impersonation'
+import { slugify } from './utils'
 
 /**
  * Guard for the business panel. Redirects anonymous users to login.
@@ -64,6 +65,85 @@ export async function categoryIdsOf(businessId: string): Promise<number[]> {
     select: { categoryId: true, extraCategories: { select: { id: true } } },
   })
   return biz ? [biz.categoryId, ...biz.extraCategories.map((c) => c.id)] : []
+}
+
+// ---------------------------------------------------------------- duplicates
+
+export type DuplicateMatch = {
+  id: string
+  name: string
+  slug: string
+  city: string
+  /** what gave it away, so the message can say why */
+  reason: 'name' | 'phone'
+}
+
+/** Last ten digits — the same line written +91 98765 43210 or 09876543210. */
+function phoneKey(phone?: string | null): string {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  return digits.length >= 10 ? digits.slice(-10) : ''
+}
+
+/**
+ * The listing this one would duplicate, or null.
+ *
+ * The same shop gets submitted twice all the time — the owner double-clicks,
+ * re-sends the form after a slow save, or an admin re-uploads a fixed CSV. Slug
+ * uniqueness alone does not stop it: "Sharma Motors" simply becomes
+ * sharma-motors-2. So two things are treated as the same business:
+ *
+ *   - the same name (compared as a slug, so spacing and punctuation do not
+ *     matter) in the same city, and
+ *   - the same phone number anywhere, since one line is not shared by two
+ *     genuinely different listings.
+ *
+ * Cities repeat names across the country — "Gupta Sweets" in Indore and in
+ * Delhi are different shops — so the name test is scoped to the city.
+ */
+export async function findDuplicateBusiness(input: {
+  name: string
+  city: string
+  phone?: string | null
+  /** ignore this listing — an edit is not a duplicate of itself */
+  excludeId?: string
+}): Promise<DuplicateMatch | null> {
+  const base = slugify(input.name)
+  const city = input.city.trim().toLowerCase()
+  const phone = phoneKey(input.phone)
+
+  // Every listing of this name already carries the slug or a -N form of it, so
+  // the unique index does the narrowing before we compare in JS.
+  const or = [
+    ...(base ? [{ slug: base }, { slug: { startsWith: `${base}-` } }] : []),
+    ...(phone ? [{ phone: { contains: phone } }] : []),
+  ]
+  if (!or.length) return null
+
+  const candidates = await db.business.findMany({
+    where: {
+      ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
+      OR: or,
+    },
+    select: { id: true, name: true, slug: true, city: true, phone: true },
+    take: 50,
+  })
+
+  for (const c of candidates) {
+    if (phone && phoneKey(c.phone) === phone) {
+      return { id: c.id, name: c.name, slug: c.slug, city: c.city, reason: 'phone' }
+    }
+    if (base && slugify(c.name) === base && c.city.trim().toLowerCase() === city) {
+      return { id: c.id, name: c.name, slug: c.slug, city: c.city, reason: 'name' }
+    }
+  }
+  return null
+}
+
+/** What to tell someone whose submission collided with an existing listing. */
+export function duplicateMessage(dup: DuplicateMatch): string {
+  return dup.reason === 'phone'
+    ? `That phone number already belongs to “${dup.name}” (${dup.city}).`
+    : `“${dup.name}” is already listed in ${dup.city}.`
 }
 
 /** Fetch a business the current user owns, or redirect. Used by edit routes. */

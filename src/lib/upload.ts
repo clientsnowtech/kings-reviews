@@ -7,6 +7,45 @@ import { randomBytes } from 'crypto'
 export const MAX_UPLOAD_BYTES = 1024 * 1024 // 1 MB
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
+export type ImageKind = 'jpg' | 'png' | 'gif' | 'webp'
+
+/**
+ * Identify an image by its leading bytes.
+ *
+ * `file.type` is whatever the browser chose to send, and a script can send
+ * anything — so it decides nothing on its own. The signature does. Returns null
+ * for anything that is not one of the four formats we accept.
+ */
+export function sniffImageType(bytes: Uint8Array): ImageKind | null {
+  if (bytes.length < 12) return null
+
+  const at = (i: number) => bytes[i]
+  const ascii = (start: number, text: string) =>
+    text.split('').every((ch, i) => at(start + i) === ch.charCodeAt(0))
+
+  // FF D8 FF — every JPEG variant opens with this SOI plus a marker
+  if (at(0) === 0xff && at(1) === 0xd8 && at(2) === 0xff) return 'jpg'
+
+  // \x89PNG\r\n\x1a\n
+  if (
+    at(0) === 0x89 &&
+    ascii(1, 'PNG') &&
+    at(4) === 0x0d &&
+    at(5) === 0x0a &&
+    at(6) === 0x1a &&
+    at(7) === 0x0a
+  ) {
+    return 'png'
+  }
+
+  if (ascii(0, 'GIF87a') || ascii(0, 'GIF89a')) return 'gif'
+
+  // RIFF container carrying a WEBP fourcc — bytes 4-7 are the chunk length
+  if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'webp'
+
+  return null
+}
+
 /** Save uploaded image files to /public/uploads/<subdir> and return their web paths. */
 export async function saveImages(
   files: File[],
@@ -23,13 +62,18 @@ export async function saveImages(
     if (file.size === 0 || file.size > MAX_UPLOAD_BYTES) continue
     if (!ALLOWED.has(file.type)) continue
 
+    // The declared type only got it this far. The extension — which is what
+    // decides the Content-Type these files are later served with — comes from
+    // the bytes, so a disguised upload cannot pick its own.
+    const buf = Buffer.from(await file.arrayBuffer())
+    const ext = sniffImageType(buf)
+    if (!ext) continue
+
     if (!made) {
       await mkdir(dir, { recursive: true })
       made = true
     }
-    const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
     const name = `${Date.now()}-${randomBytes(5).toString('hex')}.${ext}`
-    const buf = Buffer.from(await file.arrayBuffer())
     await writeFile(path.join(dir, name), buf)
     out.push(`/uploads/${subdir}/${name}`)
   }

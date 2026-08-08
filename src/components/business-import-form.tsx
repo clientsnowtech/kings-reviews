@@ -1,8 +1,8 @@
 'use client'
 
 import { useActionState } from 'react'
-import { CheckCircle2, AlertTriangle, XCircle, Upload } from 'lucide-react'
-import { adminImportBusinesses, type ImportState } from '@/lib/admin-actions'
+import { CheckCircle2, AlertTriangle, XCircle, Upload, Undo2 } from 'lucide-react'
+import { adminImportBusinesses, undoBusinessImport, type ImportState } from '@/lib/admin-actions'
 
 const initial: ImportState = {}
 
@@ -14,6 +14,7 @@ const OUTCOME = {
 
 export function BusinessImportForm() {
   const [state, action, pending] = useActionState(adminImportBusinesses, initial)
+  const [undoState, undo, undoing] = useActionState(undoBusinessImport, initial)
   const field = 'h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-brand'
 
   return (
@@ -79,6 +80,33 @@ export function BusinessImportForm() {
                 Nothing was saved — untick “Validate only” and upload again.
               </span>
             )}
+
+            {/* a wrong sheet is spotted after the upload, never before */}
+            {state.importId && !undoState.undone && (
+              <form action={undo} className="ml-auto">
+                <input type="hidden" name="importId" value={state.importId} />
+                <button
+                  type="submit"
+                  disabled={undoing}
+                  onClick={(e) => {
+                    if (!confirm(`Delete the ${state.created} listing(s) this import created?`)) {
+                      e.preventDefault()
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted transition hover:border-danger hover:text-danger disabled:cursor-wait disabled:opacity-60"
+                >
+                  <Undo2 size={14} />
+                  {undoing ? 'Undoing…' : 'Undo this import'}
+                </button>
+              </form>
+            )}
+
+            {undoState.undone && (
+              <span className="ml-auto text-xs text-danger">
+                Undone — {undoState.created} listing(s) removed.
+              </span>
+            )}
+            {undoState.error && <span className="ml-auto text-xs text-danger">{undoState.error}</span>}
           </div>
 
           <ul className="divide-y text-sm">

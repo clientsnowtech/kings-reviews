@@ -6,7 +6,12 @@ import bcrypt from 'bcryptjs'
 import { db } from './db'
 import { auth, signOut } from './auth'
 import { actingOwnerId } from './impersonation'
-import { recountCategories, categoryIdsOf } from './business'
+import {
+  recountCategories,
+  categoryIdsOf,
+  findDuplicateBusiness,
+  duplicateMessage,
+} from './business'
 import { recomputeRating } from './rating'
 import { checkText } from './moderation-db'
 import { sendMail, reviewPendingMail, businessSubmittedMail } from './mail'
@@ -273,6 +278,21 @@ export async function registerBusiness(
   })
   if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
 
+  // The same shop must not land twice — checked before the logo and cover are
+  // written, so a rejected submission leaves no orphan uploads behind.
+  const dup = await findDuplicateBusiness({
+    name: parsed.data.name,
+    city: parsed.data.city,
+    phone: parsed.data.phone,
+  })
+  if (dup) {
+    return {
+      fieldErrors: {
+        [dup.reason]: `${duplicateMessage(dup)} Claim it or write to us instead of listing it again.`,
+      },
+    }
+  }
+
   // unique slug
   const base = slugify(parsed.data.name)
   let slug = base
@@ -372,11 +392,14 @@ export async function updateBusiness(
 
   const business = await db.business.findUnique({
     where: { id: parsed.data.id },
-    select: { ownerId: true, slug: true, categoryId: true },
+    select: { ownerId: true, slug: true, categoryId: true, logo: true, cover: true },
   })
   if (!business) return { error: 'Business not found' }
   const ownerId = (await actingOwnerId(session)) ?? session.user.id
-  if (business.ownerId !== ownerId) return { error: 'Not your business' }
+  // Admins save through this same form — the admin panel shows the owner's own
+  // screens instead of a thinner copy that drifts away from them.
+  const asAdmin = business.ownerId !== ownerId && session.user.role === 'ADMIN'
+  if (business.ownerId !== ownerId && !asAdmin) return { error: 'Not your business' }
 
   // the categories it sat under before this edit, primary and extras alike
   const before = await categoryIdsOf(parsed.data.id)
@@ -392,6 +415,18 @@ export async function updateBusiness(
     coverFile instanceof File && coverFile.size > 0
       ? await saveImages([coverFile], 'business', 1)
       : []
+
+  // Clearing a picture needs saying out loud: an empty file input means "leave
+  // it alone", so without this a wrong logo could only be replaced, never taken
+  // down. A fresh upload in the same save wins over the tick.
+  const dropLogo = !logo && formData.get('removeLogo') === 'on'
+  const dropCover = !cover && formData.get('removeCover') === 'on'
+
+  // whatever this save orphans on disk — replaced or removed
+  const orphaned = [
+    ...(logo || dropLogo ? [business.logo] : []),
+    ...(cover || dropCover ? [business.cover] : []),
+  ].filter((p): p is string => !!p)
 
   await db.business.update({
     where: { id: parsed.data.id },
@@ -414,10 +449,14 @@ export async function updateBusiness(
       extraCategories: {
         set: extraCategoryIds(formData, parsed.data.categoryId).map((id) => ({ id })),
       },
-      ...(logo ? { logo } : {}),
-      ...(cover ? { cover } : {}),
+      ...(logo ? { logo } : dropLogo ? { logo: null } : {}),
+      ...(cover ? { cover } : dropCover ? { cover: null } : {}),
     },
   })
+
+  // only once the row no longer points at them, so a failed save leaves the
+  // listing with its pictures rather than with dead links
+  if (orphaned.length) await deleteUploads(orphaned)
 
   // Keep category listing counts honest. Recounted rather than shifted by one:
   // this listing may still be PENDING (an unapproved listing counts nowhere),
@@ -428,7 +467,23 @@ export async function updateBusiness(
     ...extraCategoryIds(formData, parsed.data.categoryId),
   ])
 
+  // Someone editing a listing that is not theirs should never be invisible —
+  // the same rule the impersonation switch follows.
+  if (asAdmin) {
+    await db.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        actorEmail: session.user.email ?? '',
+        action: 'business.update',
+        entity: 'business',
+        entityId: parsed.data.id,
+        detail: 'edited through the owner form',
+      },
+    })
+  }
+
   revalidatePath(`/company/${business.slug}`)
   revalidatePath('/business/dashboard/businesses')
+  revalidatePath('/admin/businesses')
   return { ok: true }
 }

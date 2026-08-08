@@ -5,6 +5,7 @@ import {
   BADGE_VARIANTS,
   CREDIT_URL,
   badgeAltText,
+  badgeSize,
   nextTier,
   parseTheme,
   parseVariant,
@@ -62,7 +63,7 @@ test('every variant renders a well-formed, self-contained svg', () => {
   for (const variant of BADGE_VARIANTS) {
     for (const theme of ['light', 'dark'] as const) {
       const svg = renderBadgeSvg({ ...base, variant, theme })
-      const size = BADGE_SIZES[variant]
+      const size = badgeSize({ ...base, variant, theme })
       assert.ok(svg.startsWith('<svg '), `${variant}/${theme} starts with an svg tag`)
       assert.ok(svg.trimEnd().endsWith('</svg>'))
       assert.ok(svg.includes(`width="${size.width}"`))
@@ -76,6 +77,18 @@ test('every variant renders a well-formed, self-contained svg', () => {
       )
     }
   }
+})
+
+test('micro sizes itself to its content, no dead space before the pill', () => {
+  const one = badgeSize({ ...base, variant: 'micro', ratingCount: 1, ratingAvg: 5 })
+  const many = badgeSize({ ...base, variant: 'micro', ratingCount: 128_000, ratingAvg: 5 })
+
+  assert.ok(one.width < many.width, 'a longer count pushes the badge wider')
+  assert.ok(one.width < BADGE_SIZES.micro.width, 'a short count no longer pads out to the old box')
+  assert.equal(one.height, BADGE_SIZES.micro.height, 'height stays fixed')
+
+  const svg = renderBadgeSvg({ ...base, variant: 'micro', ratingCount: 1, ratingAvg: 5 })
+  assert.ok(svg.includes(`width="${one.width}"`), 'svg box matches the measured width')
 })
 
 test('ids are namespaced so two inlined badges cannot collide', () => {

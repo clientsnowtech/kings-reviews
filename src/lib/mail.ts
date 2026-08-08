@@ -30,10 +30,16 @@ function mailer(): Transporter | null {
   return transport
 }
 
-export type Mail = { to: string; subject: string; text: string }
+export type Mail = {
+  to: string
+  subject: string
+  text: string
+  /** files to send along — the printable QR card is mailed this way */
+  attachments?: { filename: string; content: Buffer; contentType?: string }[]
+}
 
 /** Fire-and-forget: a failed notification is logged, never thrown. */
-export async function sendMail({ to, subject, text }: Mail): Promise<void> {
+export async function sendMail({ to, subject, text, attachments }: Mail): Promise<void> {
   const t = mailer()
   if (!t || !to) {
     console.info(`[mail skipped] ${to || 'no address'} — ${subject}`)
@@ -45,6 +51,7 @@ export async function sendMail({ to, subject, text }: Mail): Promise<void> {
       to,
       subject,
       text,
+      attachments,
     })
   } catch (err) {
     console.error('[mail failed]', subject, err)
@@ -127,6 +134,54 @@ export function businessDecisionMail(args: {
       'Write to us if you think this is a mistake, or edit the listing and it will be looked at again.',
       `${site()}/business/dashboard/businesses`,
     ].join('\n'),
+  }
+}
+
+/**
+ * Someone else listed this business and named this address as its owner.
+ *
+ * Without this the account exists but nobody knows it does — the listing sits
+ * there unclaimed and the owner never hears that they can run it.
+ */
+export function businessClaimMail(args: {
+  to: string
+  businessName: string
+  city: string
+  slug: string
+}): Mail {
+  return {
+    to: args.to,
+    subject: `${args.businessName} is listed on TrustIndex — claim it`,
+    text: [
+      `We added ${args.businessName} (${args.city}) to TrustIndex and put this address down as its owner.`,
+      `${site()}/company/${args.slug}`,
+      '',
+      'Sign in with this email to claim it — you can then edit the listing, reply to reviews and print a QR card that asks customers for one.',
+      `${site()}/login`,
+    ].join('\n'),
+  }
+}
+
+/** The printable QR card, mailed as a real attachment. */
+export function reviewCardMail(args: {
+  to: string
+  businessName: string
+  url: string
+  card: Buffer
+  filename: string
+}): Mail {
+  return {
+    to: args.to,
+    subject: `Your review QR card — ${args.businessName}`,
+    text: [
+      `The card is attached. Print it for the counter, the receipt or the packaging.`,
+      '',
+      'A phone camera on the code opens your review page:',
+      args.url,
+      '',
+      'Print it at 3 cm or bigger and never stretch it — a squashed code stops scanning.',
+    ].join('\n'),
+    attachments: [{ filename: args.filename, content: args.card, contentType: 'image/png' }],
   }
 }
 

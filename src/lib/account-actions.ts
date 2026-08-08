@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs'
 import { db } from './db'
 import { auth } from './auth'
 import { saveImages, deleteUploads } from './upload'
-import { rateLimit } from './rate-limit'
+import { callerIp, loginAttempt, rateLimit } from './rate-limit'
 import { profileSchema, passwordChangeSchema, twoFactorCodeSchema } from './validations'
 import {
   generateSecret,
@@ -257,7 +257,8 @@ export async function loginPrecheck(
   password: string,
 ): Promise<'ok' | 'twoFactor' | 'invalid'> {
   const key = email.trim().toLowerCase()
-  if (!rateLimit(`precheck:${key}`, 10, 60_000).ok) return 'invalid'
+  // Shares its allowance with the credentials provider — see loginAttempt().
+  if (!loginAttempt(key, await callerIp())) return 'invalid'
 
   const user = await db.user.findUnique({
     where: { email: key },

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Star, MessageSquareReply, Building2, MailWarning } from 'lucide-react'
+import { Star, MessageSquareReply, Building2, MailWarning, QrCode } from 'lucide-react'
 import { db } from '@/lib/db'
 import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
@@ -63,16 +63,21 @@ export default async function OverviewPage() {
     },
   })
 
+  // a printed card is otherwise invisible: the owner cannot tell whether the
+  // QR on the counter is doing anything at all
+  const qrScans = businesses.reduce((s, b) => s + b.qrScans, 0)
+
   const stats = [
     { label: 'Businesses', value: businesses.length, icon: Building2, accent: false },
     { label: 'Total reviews', value: totalReviews, icon: MessageSquareReply, accent: false },
     { label: 'Avg rating', value: avg ? avg.toFixed(1) : '—', icon: Star, accent: false },
+    { label: 'QR scans', value: qrScans, icon: QrCode, accent: false },
     { label: 'Awaiting reply', value: unreplied, icon: MailWarning, accent: unreplied > 0 },
   ]
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {stats.map((s) => (
           <div
             key={s.label}

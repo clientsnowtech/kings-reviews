@@ -6,12 +6,59 @@ import { colorFrom } from '@/lib/utils'
 import { CategoryIcon } from '@/components/category-icon'
 import { Pagination } from '@/components/pagination'
 import { CategorySearch } from '@/components/category-search'
+import { clampDescription, SITE_NAME, SITE_URL } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'All categories',
-  description: 'Browse every business category on TrustIndex and read verified customer reviews.',
-}
 export const dynamic = 'force-dynamic'
+
+/**
+ * Paged and searched views of the same list are near-duplicates. Page 1 is the
+ * canonical entry; deeper pages keep their own canonical (so their listings stay
+ * discoverable) while `?q=` result pages are followed but never indexed.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>
+}): Promise<Metadata> {
+  const { q, page: pageParam } = await searchParams
+  const query = (q ?? '').trim()
+  const page = Math.max(1, Number(pageParam) || 1)
+
+  const title = query
+    ? `Business categories matching “${query}”`
+    : page > 1
+      ? `All business categories — page ${page}`
+      : 'All business categories in India'
+
+  const description = clampDescription(
+    `Browse every business category on ${SITE_NAME} — restaurants, hotels, clinics, repairs, ` +
+      'salons and thousands more. Compare listings by verified customer reviews and ratings.',
+  )
+
+  const canonical = page > 1 ? `/categories?page=${page}` : '/categories'
+
+  return {
+    title,
+    description,
+    keywords: [
+      'business categories',
+      'business directory India',
+      'company reviews by category',
+      'top rated businesses India',
+      'local business listings',
+    ],
+    alternates: { canonical },
+    robots: query ? { index: false, follow: true } : { index: true, follow: true },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_NAME,
+      url: canonical,
+      title,
+      description,
+    },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
 
 /** The full list runs to ~4,000 names, so a page only ever shows a slice. */
 const PER_PAGE = 48
@@ -58,8 +105,40 @@ export default async function CategoriesPage({
   const totalBiz = businesses.length
   const pageCount = Math.max(1, Math.ceil(matching / PER_PAGE))
 
+  // Lets search engines pick up the category links as a list rather than
+  // guessing at a wall of anchors, and gives the breadcrumb a machine-readable
+  // twin of the one rendered below.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Categories', item: `${SITE_URL}/categories` },
+        ],
+      },
+      {
+        '@type': 'ItemList',
+        name: 'Business categories',
+        numberOfItems: categories.length,
+        itemListElement: categories.map((c, i) => ({
+          '@type': 'ListItem',
+          position: (page - 1) * PER_PAGE + i + 1,
+          url: `${SITE_URL}/category/${c.slug}`,
+          name: c.name,
+        })),
+      },
+    ],
+  }
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* ============ HEADER ============ */}
       <section className="hero-wash border-b">
         <div className="mx-auto max-w-6xl px-4 py-14">

@@ -52,13 +52,17 @@ export function PhotoLightbox({
           aria-label="Open photo"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={img.path} alt={img.alt ?? ''} className={cn('object-cover transition hover:opacity-90', thumbClass)} />
+          <img
+            src={img.path}
+            alt={img.alt ?? ''}
+            className={cn('object-cover transition duration-300 hover:scale-105 hover:opacity-90', thumbClass)}
+          />
         </button>
       ))}
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={close}
           role="dialog"
           aria-modal="true"
@@ -88,9 +92,12 @@ export function PhotoLightbox({
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            // keyed on the index so stepping through the gallery replays the
+            // entry animation — otherwise arrow keys just hard-cut the src
+            key={idx}
             src={images[idx].path}
             alt={images[idx].alt ?? ''}
-            className="max-h-[85vh] max-w-full rounded-lg object-contain"
+            className="animate-scale-in max-h-[85vh] max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />
 

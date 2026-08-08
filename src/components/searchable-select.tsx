@@ -100,7 +100,7 @@ export function SearchableSelect({
       />
 
       {open && !disabled && filtered.length > 0 && (
-        <ul className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-surface py-1 shadow-float">
+        <ul className="animate-fade-down absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-surface py-1 shadow-float">
           {filtered.map((o, i) => (
             <li key={o}>
               <button

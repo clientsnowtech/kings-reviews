@@ -54,7 +54,9 @@ function page(inner: string, title: string) {
 <link rel="publisher" href="${CREDIT_URL}">
 <style>
   html,body{margin:0;padding:0;background:transparent;overflow:hidden}
-  a{display:inline-block;line-height:0;text-decoration:none;transition:transform .15s ease,filter .15s ease}
+  /* the host sizes the iframe; the artwork scales to fill it off its viewBox */
+  a{display:block;line-height:0;text-decoration:none;transition:transform .15s ease,filter .15s ease}
+  svg{display:block;width:100%;height:auto}
   a:hover{transform:translateY(-2px);filter:drop-shadow(0 6px 16px rgba(16,40,34,.16))}
   a:focus-visible{outline:2px solid #0e7a63;outline-offset:3px;border-radius:18px}
 </style>

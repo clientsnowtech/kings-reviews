@@ -7,7 +7,11 @@ import { CategoryIcon } from '@/components/category-icon'
 import { Stars } from '@/components/stars'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
 
-export const dynamic = 'force-dynamic'
+// The busiest page on the site, and none of what it shows is per-visitor —
+// featured listings and the recent-review strip are the same for everyone. It
+// was rebuilding from the database on every single request; five minutes of
+// staleness is invisible here and takes the query off the hot path.
+export const revalidate = 300
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
@@ -214,7 +218,7 @@ export default async function Home() {
             <Quote size={22} className="text-brand" />
             <h2 className="text-3xl font-bold tracking-tight">What customers are saying</h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {recent.map((r) => (
               <Link key={r.id} href={`/company/${r.business.slug}`} className="rounded-2xl border bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-float">
                 <div className="flex items-center justify-between">
@@ -226,7 +230,7 @@ export default async function Home() {
                 <div className="mt-4 flex items-center gap-2 border-t pt-3">
                   {r.business.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.business.logo} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                    <img src={r.business.logo} alt="" width={32} height={32} loading="lazy" decoding="async" className="h-8 w-8 rounded-lg object-cover" />
                   ) : (
                     <span className="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-white" style={{ background: colorFrom(r.business.slug) }}>
                       {initials(r.business.name)}
@@ -246,7 +250,7 @@ export default async function Home() {
           <Star size={22} className="text-star" fill="var(--star)" />
           <h2 className="text-3xl font-bold tracking-tight">Top rated on TrustIndex</h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topRated.map((b) => (
             <BusinessCard key={b.id} b={b} />
           ))}

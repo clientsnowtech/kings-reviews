@@ -133,6 +133,11 @@ model Business {
   state   String
   pincode String?
 
+  // the CSV run that created this row, so one bad import can be undone whole
+  importId          String?
+  // scans of the printed QR card — otherwise the print is invisible to its owner
+  qrScans           Int            @default(0)
+
   status            BusinessStatus @default(PENDING)
   // owner-facing embed badge; admins revoke it when the credit link is stripped
   badgeEnabled      Boolean        @default(true)
@@ -168,6 +173,7 @@ model Business {
   @@index([city, status])
   @@index([status, ratingAvg])
   @@index([name])
+  @@index([importId])
 }
 
 model BusinessHour {

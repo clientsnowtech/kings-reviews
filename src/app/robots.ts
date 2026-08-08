@@ -8,7 +8,18 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       // badge images are hotlinked from customer sites, so they stay crawlable
       allow: ['/', '/api/badge/'],
-      disallow: ['/business/dashboard', '/my/', '/api/', '/embed/', '/login', '/register'],
+      // /r/ is the review short-link — it only ever redirects, so crawling it
+      // spends budget to land on a page the sitemap already lists
+      disallow: [
+        '/business/dashboard',
+        '/my/',
+        '/api/',
+        '/embed/',
+        '/login',
+        '/register',
+        '/r/',
+        '/post-login',
+      ],
     },
     sitemap: `${BASE}/sitemap.xml`,
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import Link from 'next/link'
 import { registerBusiness, type ActionState } from '@/lib/actions'
 import { CategoryPicker, type CategoryOption } from './category-picker'
 import { LocationPicker } from './location-picker'
@@ -104,15 +105,25 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
       </Section>
 
       {/* 3. Contact */}
-      <Section title="Contact" desc="How customers reach you.">
+      <Section
+        title="Contact"
+        desc="Each field becomes an action button on your profile — Call, WhatsApp, Directions, Website, Email."
+      >
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Contact email" name="email" type="email" required error={fe.email} placeholder="contact@business.in" />
-          <Field label="Phone" name="phone" required error={fe.phone} placeholder="+91 …" />
+          <Field label="Contact email" name="email" type="email" required error={fe.email} placeholder="contact@business.in" hint="Shown as the Email button." />
+          <Field label="Phone" name="phone" required error={fe.phone} placeholder="+91 …" hint="Shown as the Call button." />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="WhatsApp" name="whatsapp" error={fe.whatsapp} placeholder="+91 …" hint="Shown as a chat button if set." />
+          <Field label="WhatsApp" name="whatsapp" error={fe.whatsapp} placeholder="+91 …" hint="Opens a wa.me chat." />
           <Field label="Website" name="website" error={fe.website} placeholder="https://…" />
         </div>
+        <Field
+          label="Google Maps link"
+          name="mapUrl"
+          error={fe.mapUrl}
+          placeholder="https://maps.app.goo.gl/…"
+          hint="Paste your Google Maps share link — shown as the Directions button."
+        />
       </Section>
 
       {/* 4. Social */}
@@ -130,13 +141,6 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Pincode" name="pincode" error={fe.pincode} placeholder="e.g. 400001" />
         </div>
-        <Field
-          label="Google Maps link"
-          name="mapUrl"
-          error={fe.mapUrl}
-          placeholder="https://maps.app.goo.gl/…"
-          hint="Paste your Google Maps share link so customers can find you."
-        />
       </Section>
 
       {state.error && <p className="text-sm text-danger">{state.error}</p>}
@@ -147,6 +151,20 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
       >
         {pending ? 'Submitting…' : 'List my business'}
       </button>
+
+      {/* DPDP Act §5 notice at the point of collection — the footer link alone
+          is not "before or at the time" consent is taken. */}
+      <p className="text-xs leading-relaxed text-muted">
+        By submitting you confirm you are authorised to list this business, accept our{' '}
+        <Link href="/terms" className="font-medium text-brand hover:underline">
+          Terms of Service
+        </Link>
+        , and consent to the processing of the details above as described in our{' '}
+        <Link href="/privacy" className="font-medium text-brand hover:underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </form>
   )
 }

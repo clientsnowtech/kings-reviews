@@ -186,7 +186,7 @@ export function CategoryPicker({
       </div>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border bg-surface shadow-float">
+        <div className="animate-fade-down absolute z-30 mt-1 w-full overflow-hidden rounded-lg border bg-surface shadow-float">
           <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted">
             <Search size={14} className="shrink-0" />
             {query ? `Matches for “${query}”` : 'Type to search'}

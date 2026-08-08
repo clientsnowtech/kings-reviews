@@ -5,6 +5,7 @@ import { BadgeCheck, Check, Copy, ExternalLink, Globe, Info } from 'lucide-react
 import {
   BADGE_SIZES,
   CREDIT_NAME,
+  badgeSize,
   CREDIT_URL,
   TIERS,
   formatCount,
@@ -102,7 +103,16 @@ export function BadgeStudio({
   const seen = stats[b.id]
   const tier = tierFor(b.ratingCount, b.ratingAvg)
   const up = nextTier(b.ratingCount, b.ratingAvg)
-  const size = BADGE_SIZES[variant]
+  // micro shrink-wraps its content, so the snippet dimensions have to come
+  // from the same measurer the renderer uses, not from the nominal box
+  const size = badgeSize({
+    name: b.name,
+    ratingAvg: b.ratingAvg,
+    ratingCount: b.ratingCount,
+    verified: b.verified,
+    variant,
+    theme,
+  })
 
   const qs = `variant=${variant}&theme=${theme}`
   const previewSrc = `/api/badge/${b.slug}?${qs}`
@@ -116,7 +126,13 @@ export function BadgeStudio({
     // visible, crawlable build credit — a hidden link would be discounted by search engines
     const creditLink = `  <a href="${CREDIT_URL}" target="_blank" rel="noopener"
      style="display:block;margin-top:6px;font:400 11px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#5c6b66;text-decoration:none">Powered by ${CREDIT_NAME}</a>`
-    const open = `<div style="display:inline-block;text-align:center">`
+    const open = `<div style="display:inline-block;max-width:100%;text-align:center">`
+    // the width/height attrs reserve the box so the host page never shifts as
+    // the badge loads; the CSS lets it shrink when the slot is narrower
+    const fluid = `max-width:100%;height:auto`
+    // an iframe is not a replaced image: height:auto alone collapses it to the
+    // 150px default, so the ratio has to be spelled out
+    const fluidFrame = `max-width:100%;aspect-ratio:${size.width}/${size.height};height:auto`
 
     return {
       html: `${credit}
@@ -124,6 +140,7 @@ ${open}
   <a href="${profileUrl}?utm_source=badge&amp;utm_medium=referral" target="_blank" rel="noopener">
     <img src="${appUrl}/api/badge/${b.slug}?${q}"
          width="${size.width}" height="${size.height}"
+         style="${fluid}"
          alt="${alt}" loading="lazy" />
   </a>
 ${creditLink}
@@ -133,7 +150,7 @@ ${open}
   <iframe src="${appUrl}/embed/badge/${b.slug}?${q}"
           width="${size.width}" height="${size.height}"
           title="${alt}" loading="lazy" scrolling="no"
-          style="border:0;overflow:hidden"></iframe>
+          style="border:0;overflow:hidden;${fluidFrame}"></iframe>
 ${creditLink}
 </div>`,
       url: imgUrl,
@@ -241,7 +258,8 @@ ${creditLink}
                   <span>{v.label}</span>
                   <span className="text-xs font-normal text-muted">{v.hint}</span>
                   <span className="ml-auto text-[11px] text-muted">
-                    {BADGE_SIZES[v.key].width}×{BADGE_SIZES[v.key].height}
+                    {v.key === 'micro' ? 'auto' : BADGE_SIZES[v.key].width}×
+                    {BADGE_SIZES[v.key].height}
                   </span>
                 </button>
               ))}

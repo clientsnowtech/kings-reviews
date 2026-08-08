@@ -8,7 +8,12 @@ import { LocationPicker } from '@/components/location-picker'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminNewBusiness() {
+export default async function AdminNewBusiness({
+  searchParams,
+}: {
+  searchParams: Promise<{ duplicate?: string; slug?: string }>
+}) {
+  const { duplicate, slug } = await searchParams
   const categories = await db.category.findMany({
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
@@ -27,6 +32,21 @@ export default async function AdminNewBusiness() {
       </Link>
 
       <h2 className="text-xl font-bold">Add business</h2>
+
+      {duplicate && (
+        <div className="rounded-xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
+          <p className="font-medium">Not added — this looks like a duplicate.</p>
+          <p className="mt-1">{duplicate}</p>
+          {slug && (
+            <Link
+              href={`/company/${slug}`}
+              className="mt-2 inline-block font-medium underline underline-offset-2"
+            >
+              Open the existing listing
+            </Link>
+          )}
+        </div>
+      )}
 
       <form action={adminCreateBusiness} className="space-y-4 rounded-2xl border bg-surface p-6">
         <div>
@@ -49,7 +69,19 @@ export default async function AdminNewBusiness() {
             <label className={label}>Phone</label>
             <input name="phone" required className={field} />
           </div>
+          <div>
+            <label className={label}>WhatsApp</label>
+            <input name="whatsapp" className={field} placeholder="+91 …" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={label}>Google Maps link</label>
+            <input name="mapUrl" className={field} placeholder="https://maps.app.goo.gl/…" />
+          </div>
         </div>
+        <p className="-mt-2 text-xs text-muted">
+          Phone, WhatsApp, maps, website and email each become an action button on the public
+          profile.
+        </p>
 
         <LocationPicker />
 

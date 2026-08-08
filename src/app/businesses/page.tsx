@@ -217,7 +217,7 @@ export default async function BusinessesPage({
           .
         </p>
       ) : (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {businesses.map((b) => (
             <BusinessCard key={b.id} b={b} />
           ))}

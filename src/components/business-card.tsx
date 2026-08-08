@@ -24,7 +24,15 @@ export function BusinessCard({ b }: { b: CardBusiness }) {
     >
       {b.logo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={b.logo} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+        <img
+          src={b.logo}
+          alt=""
+          width={56}
+          height={56}
+          loading="lazy"
+          decoding="async"
+          className="h-14 w-14 shrink-0 rounded-lg object-cover"
+        />
       ) : (
         <span
           className="grid h-14 w-14 shrink-0 place-items-center rounded-lg text-lg font-bold text-white"

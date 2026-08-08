@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { Prisma } from '@prisma/client'
 import {
   Globe,
+  Mail,
   MapPin,
   Phone,
   BadgeCheck,
@@ -26,6 +27,7 @@ import { ReviewControls } from '@/components/review-controls'
 import { ReviewBody } from '@/components/review-body'
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons'
 import { publishOverdueReviews } from '@/lib/review-sla'
+import { SITE_NAME } from '@/lib/seo'
 import { colorFrom, initials, formatDate, externalUrl } from '@/lib/utils'
 
 const PAGE_SIZE = 10
@@ -64,16 +66,38 @@ async function getBusiness(slug: string) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ rating?: string; sort?: string; page?: string }>
 }): Promise<Metadata> {
   const { slug } = await params
+  const sp = await searchParams
   const b = await db.business.findFirst({ where: { slug, status: 'LIVE' } })
-  if (!b) return { title: 'Business not found' }
+  if (!b) return { title: 'Business not found', robots: { index: false, follow: false } }
+
   const avg = Number(b.ratingAvg)
+  const title = `${b.name} Reviews`
+  const description = `${b.name} in ${b.city}, ${b.state} has ${avg.toFixed(1)}★ from ${b.ratingCount} reviews. Read reviews or write your own on TrustIndex.`
+
+  // Every paged, sorted or star-filtered view is the same business with its
+  // reviews rearranged. One canonical copy gets indexed and the rest are
+  // followed for their links only — the same rule the category pages apply.
+  const filteredView = Boolean(sp.rating || sp.page || (sp.sort && sp.sort !== 'recent'))
+
   return {
-    title: `${b.name} Reviews`,
-    description: `${b.name} in ${b.city}, ${b.state} has ${avg.toFixed(1)}★ from ${b.ratingCount} reviews. Read reviews or write your own on TrustIndex.`,
+    title,
+    description,
+    alternates: { canonical: `/company/${b.slug}` },
+    robots: filteredView ? { index: false, follow: true } : { index: true, follow: true },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_NAME,
+      url: `/company/${b.slug}`,
+      title,
+      description,
+    },
+    twitter: { card: 'summary_large_image', title, description },
   }
 }
 
@@ -158,6 +182,9 @@ export default async function CompanyPage({
   const waDigits = b.whatsapp?.replace(/\D/g, '')
   const siteHref = externalUrl(b.website)
   const mapHref = externalUrl(b.mapUrl)
+  // tel: chokes on spaces and brackets, so keep digits and a leading +
+  const telDigits = b.phone?.replace(/[^\d+]/g, '')
+  const mailAddress = b.email?.trim()
   const igHref = b.instagram
     ? b.instagram.startsWith('http')
       ? b.instagram
@@ -182,7 +209,10 @@ export default async function CompanyPage({
       addressCountry: 'IN',
     },
     telephone: b.phone,
+    email: mailAddress || undefined,
     url: siteHref ?? undefined,
+    hasMap: mapHref ?? undefined,
+    ...([igHref, fbHref].some(Boolean) && { sameAs: [igHref, fbHref].filter(Boolean) }),
     ...(b.ratingCount > 0 && {
       aggregateRating: {
         '@type': 'AggregateRating',
@@ -212,14 +242,18 @@ export default async function CompanyPage({
     href: string
     icon: ComponentType<{ size?: number }>
     label: string
+    /** tel: and mailto: hand off to the device, so they stay in this tab */
+    external?: boolean
   }
 
   const contacts = [
-    waDigits && { href: `https://wa.me/${waDigits}`, icon: WhatsAppIcon, label: 'WhatsApp' },
-    siteHref && { href: siteHref, icon: Globe, label: 'Website' },
-    igHref && { href: igHref, icon: InstagramIcon, label: 'Instagram' },
-    fbHref && { href: fbHref, icon: FacebookIcon, label: 'Facebook' },
-    mapHref && { href: mapHref, icon: MapIcon, label: 'Directions' },
+    telDigits && { href: `tel:${telDigits}`, icon: Phone, label: 'Call' },
+    waDigits && { href: `https://wa.me/${waDigits}`, icon: WhatsAppIcon, label: 'WhatsApp', external: true },
+    mapHref && { href: mapHref, icon: MapIcon, label: 'Directions', external: true },
+    siteHref && { href: siteHref, icon: Globe, label: 'Website', external: true },
+    mailAddress && { href: `mailto:${mailAddress}`, icon: Mail, label: 'Email' },
+    igHref && { href: igHref, icon: InstagramIcon, label: 'Instagram', external: true },
+    fbHref && { href: fbHref, icon: FacebookIcon, label: 'Facebook', external: true },
   ].filter(Boolean) as Contact[]
 
   // build a paging href that preserves the active filter + sort
@@ -353,8 +387,7 @@ export default async function CompanyPage({
             <a
               key={c.label}
               href={c.href}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
+              {...(c.external && { target: '_blank', rel: 'noopener noreferrer nofollow' })}
               className="inline-flex items-center gap-1.5 rounded-full border bg-surface px-3 py-1.5 text-sm text-foreground/80 transition hover:border-brand hover:bg-brand hover:text-white"
             >
               <c.icon size={15} /> {c.label}

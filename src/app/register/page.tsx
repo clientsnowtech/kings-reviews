@@ -80,6 +80,20 @@ export default function RegisterPage() {
           >
             {pending ? 'Creating…' : 'Create account'}
           </button>
+
+          {/* DPDP Act §5 wants the notice presented where consent is taken, not
+              only linked from the footer. */}
+          <p className="text-center text-xs leading-relaxed text-muted">
+            By creating an account you agree to our{' '}
+            <Link href="/terms" className="font-medium text-brand hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and consent to the processing of your personal data as described in our{' '}
+            <Link href="/privacy" className="font-medium text-brand hover:underline">
+              Privacy Policy
+            </Link>
+            . You can withdraw consent at any time.
+          </p>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">

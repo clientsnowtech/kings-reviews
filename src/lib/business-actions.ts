@@ -7,10 +7,17 @@ import { db } from './db'
 import { auth } from './auth'
 import { actingOwnerId } from './impersonation'
 import { recomputeRating } from './rating'
-import { sendMail, reviewDecidedMail } from './mail'
+import { sendMail, reviewDecidedMail, reviewCardMail } from './mail'
 import { saveImages, deleteUploads } from './upload'
+import { shortReviewLink } from './review-link'
 
-/** Returns the business only if the caller owns it (or is acting for its owner). */
+/**
+ * Returns the business only if the caller owns it (or is acting for its owner).
+ *
+ * Admins pass too: they edit listings through the owner's own screens rather
+ * than a thinner copy of them, so support fixes exactly what the owner sees.
+ * It grants nothing new — an admin can already open any dashboard as its owner.
+ */
 async function ownedBusiness(businessId: string) {
   const session = await auth()
   if (!session?.user) return null
@@ -19,8 +26,54 @@ async function ownedBusiness(businessId: string) {
     where: { id: businessId },
     select: { id: true, ownerId: true, slug: true, verifiedAt: true },
   })
-  if (!biz || biz.ownerId !== ownerId) return null
+  if (!biz) return null
+  if (biz.ownerId !== ownerId && session.user.role !== 'ADMIN') return null
   return biz
+}
+
+// ---------------------------------------------------------------- review card
+
+/** A card is a page of artwork, not a photo album. */
+const CARD_MAX_BYTES = 3 * 1024 * 1024
+
+export type MailCardState = { ok?: boolean; error?: string; to?: string }
+
+/**
+ * Mail the printable QR card to the owner as a real attachment.
+ *
+ * `mailto:` cannot carry a file, so the browser otherwise leaves the owner to
+ * download the card and attach it by hand. The bitmap already exists in the
+ * dialog — it is posted here and sent from the server instead.
+ */
+export async function emailReviewCard(formData: FormData): Promise<MailCardState> {
+  const session = await auth()
+  if (!session?.user?.email) return { error: 'Sign in first.' }
+
+  const biz = await ownedBusiness(String(formData.get('businessId')))
+  if (!biz) return { error: 'That business is not yours.' }
+
+  const card = formData.get('card')
+  if (!(card instanceof File) || card.size === 0) return { error: 'The card did not come through.' }
+  if (card.type !== 'image/png') return { error: 'The card must be a PNG.' }
+  if (card.size > CARD_MAX_BYTES) return { error: 'That card is too large to mail.' }
+
+  const business = await db.business.findUnique({
+    where: { id: biz.id },
+    select: { name: true, slug: true },
+  })
+  if (!business) return { error: 'That business is not yours.' }
+
+  await sendMail(
+    reviewCardMail({
+      to: session.user.email,
+      businessName: business.name,
+      url: shortReviewLink(business.slug),
+      card: Buffer.from(await card.arrayBuffer()),
+      filename: `${business.slug}-review-card.png`,
+    }),
+  )
+
+  return { ok: true, to: session.user.email }
 }
 
 // ---------------------------------------------------------------- hours

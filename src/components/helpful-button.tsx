@@ -45,13 +45,16 @@ export function HelpfulButton({
       disabled={pending}
       aria-pressed={voted}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition disabled:opacity-60',
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition active:scale-95 disabled:opacity-60',
         voted
           ? 'border-brand bg-brand/10 text-brand'
           : 'text-muted hover:border-brand hover:text-brand',
       )}
     >
-      <ThumbsUp size={13} /> Helpful{count > 0 && <span className="tabular-nums">· {count}</span>}
+      {/* keyed on the vote so the thumb remounts and replays the pop — the
+          optimistic update is otherwise invisible on a slow connection */}
+      <ThumbsUp key={String(voted)} size={13} className={voted ? 'animate-pop' : ''} /> Helpful
+      {count > 0 && <span className="tabular-nums">· {count}</span>}
     </button>
   )
 }

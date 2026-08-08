@@ -8,8 +8,13 @@ import { forgetBadgeBusiness } from './badge-server'
 import { recomputeRating } from './rating'
 import { forgetBlockedWords } from './moderation-db'
 import { requireAdmin } from './admin'
-import { recountCategories, categoryIdsOf } from './business'
-import { sendMail, businessDecisionMail } from './mail'
+import {
+  recountCategories,
+  categoryIdsOf,
+  findDuplicateBusiness,
+  duplicateMessage,
+} from './business'
+import { sendMail, businessDecisionMail, businessClaimMail } from './mail'
 import { setActingOwner, clearActingOwner } from './impersonation'
 import { slugify, externalUrl } from './utils'
 import { businessSchema } from './validations'
@@ -97,8 +102,11 @@ export async function setBusinessStatus(formData: FormData) {
  * gets a passwordless account it can claim through Google sign-in, and a blank
  * email leaves the listing under the admin who added it.
  */
-async function resolveOwnerId(ownerEmail: string, fallbackId: string): Promise<string> {
-  if (!ownerEmail) return fallbackId
+async function resolveOwnerId(
+  ownerEmail: string,
+  fallbackId: string,
+): Promise<{ id: string; created: boolean }> {
+  if (!ownerEmail) return { id: fallbackId, created: false }
 
   const existing = await db.user.findUnique({
     where: { email: ownerEmail },
@@ -108,14 +116,15 @@ async function resolveOwnerId(ownerEmail: string, fallbackId: string): Promise<s
     if (existing.role === 'USER') {
       await db.user.update({ where: { id: existing.id }, data: { role: 'BUSINESS' } })
     }
-    return existing.id
+    return { id: existing.id, created: false }
   }
 
   const created = await db.user.create({
     data: { email: ownerEmail, role: 'BUSINESS' },
     select: { id: true },
   })
-  return created.id
+  // the caller announces it — an account nobody hears about is never claimed
+  return { id: created.id, created: true }
 }
 
 /** A slug nobody is using yet — two "Sharma Motors" cannot share a URL. */
@@ -149,7 +158,18 @@ export async function adminCreateBusiness(formData: FormData) {
   if (name.length < 2 || !categoryId || !email || !phone || !city || !state) return
   if (!['PENDING', 'LIVE'].includes(status)) return
 
-  const ownerId = await resolveOwnerId(str('ownerEmail').toLowerCase(), session.user.id)
+  // Same rule as the public form: the shop may already be here under an owner
+  // who listed it themselves. The admin is sent back with the match named, not
+  // left to discover two half-filled profiles later.
+  const dup = await findDuplicateBusiness({ name, city, phone })
+  if (dup) {
+    redirect(
+      `/admin/businesses/new?duplicate=${encodeURIComponent(duplicateMessage(dup))}&slug=${dup.slug}`,
+    )
+  }
+
+  const owner = await resolveOwnerId(str('ownerEmail').toLowerCase(), session.user.id)
+  const ownerId = owner.id
   const slug = await uniqueSlug(name)
 
   const business = await db.business.create({
@@ -162,7 +182,9 @@ export async function adminCreateBusiness(formData: FormData) {
       phone,
       city,
       state,
-      website: str('website') || null,
+      website: externalUrl(str('website')),
+      whatsapp: str('whatsapp') || null,
+      mapUrl: externalUrl(str('mapUrl')),
       description: str('description') || null,
       // added by an admin, but still not verified — verification has its own queue
       status,
@@ -174,6 +196,12 @@ export async function adminCreateBusiness(formData: FormData) {
   // An admin-created listing skips the queue: the person adding it is the
   // person who would have approved it.
   await recountCategories([categoryId, ...extraIds(formData, categoryId)])
+
+  if (owner.created) {
+    await sendMail(
+      businessClaimMail({ to: str('ownerEmail').toLowerCase(), businessName: name, city, slug }),
+    )
+  }
 
   await logAudit(session, 'business.create', 'business', business.id, name)
   revalidatePath('/admin/businesses')
@@ -204,6 +232,10 @@ export type ImportState = {
   skipped?: number
   failed?: number
   rows?: ImportRowResult[]
+  /** tags every row this run created, so the whole batch can be undone */
+  importId?: string
+  /** set once the batch has been rolled back */
+  undone?: boolean
 }
 
 /**
@@ -213,9 +245,11 @@ export type ImportState = {
  * add form, so this takes the sheet the data already lives in. Every row is
  * judged on its own: a bad row is reported by line number and the rest still
  * land, because a 300-row upload that aborts on row 7 is worse than useless.
- * Categories are matched by name (or slug), and a listing whose name and city
- * already exist is skipped rather than duplicated — the same file gets
- * re-uploaded after a fix all the time.
+ * Categories are matched by name (or slug), and a row that duplicates an
+ * existing listing — same name in the same city, or the same phone number —
+ * is skipped rather than added twice, because the same file gets re-uploaded
+ * after a fix all the time. Rows that repeat each other inside one file are
+ * caught the same way.
  */
 export async function adminImportBusinesses(
   _prev: ImportState,
@@ -249,6 +283,10 @@ export async function adminImportBusinesses(
   const owners = new Map<string, string>()
   const seen = new Set<string>()
   const audits: { action: string; entity: string; entityId: string; detail: string }[] = []
+  // one id for the whole run — a sheet that turns out wrong is undone in a click
+  const importId = crypto.randomUUID()
+  // told after the loop: 500 SMTP round-trips mid-import would stall the request
+  const claims: { to: string; businessName: string; city: string; slug: string }[] = []
 
   for (const r of records) {
     const name = r.get('name', 'business name', 'business')
@@ -298,19 +336,18 @@ export async function adminImportBusinesses(
     const data = parsed.data
 
     // a re-upload after fixing a few rows must not double the ones that worked
-    const key = `${name.toLowerCase()}|${data.city.toLowerCase()}`
-    if (seen.has(key)) {
+    const key = `${slugify(name)}|${data.city.trim().toLowerCase()}`
+    const phoneKey = data.phone.replace(/\D/g, '').slice(-10)
+    if (seen.has(key) || (phoneKey.length === 10 && seen.has(phoneKey))) {
       push('skipped', 'Duplicate of an earlier row in this file')
       continue
     }
     seen.add(key)
+    if (phoneKey.length === 10) seen.add(phoneKey)
 
-    const clash = await db.business.findFirst({
-      where: { name, city: data.city },
-      select: { id: true },
-    })
+    const clash = await findDuplicateBusiness({ name, city: data.city, phone: data.phone })
     if (clash) {
-      push('skipped', `Already listed in ${data.city}`)
+      push('skipped', duplicateMessage(clash))
       continue
     }
 
@@ -329,17 +366,22 @@ export async function adminImportBusinesses(
 
     const ownerEmail = r.get('owner email', 'owner').toLowerCase()
     let ownerId = owners.get(ownerEmail)
+    let ownerIsNew = false
     if (!ownerId) {
       // one email may own several rows — resolve it once per file
-      ownerId = await resolveOwnerId(ownerEmail, session.user.id)
+      const owner = await resolveOwnerId(ownerEmail, session.user.id)
+      ownerId = owner.id
+      ownerIsNew = owner.created
       owners.set(ownerEmail, ownerId)
     }
 
+    const slug = await uniqueSlug(name)
     const business = await db.business.create({
       data: {
         ownerId,
         categoryId,
-        slug: await uniqueSlug(name),
+        importId,
+        slug,
         name,
         email: data.email,
         phone: data.phone,
@@ -364,6 +406,7 @@ export async function adminImportBusinesses(
 
     touched.add(categoryId)
     for (const id of extraIdsForRow) touched.add(id)
+    if (ownerIsNew) claims.push({ to: ownerEmail, businessName: name, city: data.city, slug })
     audits.push({
       action: 'business.create',
       entity: 'business',
@@ -384,18 +427,66 @@ export async function adminImportBusinesses(
         })),
       })
     }
+    for (const claim of claims) {
+      await sendMail(businessClaimMail(claim))
+    }
+
     revalidatePath('/admin/businesses')
     revalidatePath('/admin')
     revalidatePath('/categories')
   }
 
+  const created = rows.filter((r) => r.outcome === 'created').length
+
   return {
     dryRun,
-    created: rows.filter((r) => r.outcome === 'created').length,
+    created,
     skipped: rows.filter((r) => r.outcome === 'skipped').length,
     failed: rows.filter((r) => r.outcome === 'error').length,
     rows,
+    importId: !dryRun && created > 0 ? importId : undefined,
   }
+}
+
+/**
+ * Delete every listing one import created.
+ *
+ * A 300-row sheet with the wrong category or the wrong city is noticed after
+ * the upload, not before, and undoing it by hand means 300 delete clicks. Only
+ * rows carrying this run's id go, so anything edited or added since survives.
+ */
+export async function undoBusinessImport(
+  _prev: ImportState,
+  formData: FormData,
+): Promise<ImportState> {
+  const session = await requireAdmin()
+
+  const importId = String(formData.get('importId') ?? '')
+  if (!importId) return { error: 'Nothing to undo.' }
+
+  const doomed = await db.business.findMany({
+    where: { importId },
+    select: { id: true, name: true, slug: true, categoryId: true, extraCategories: { select: { id: true } } },
+  })
+  if (doomed.length === 0) return { error: 'That import has already been undone.' }
+
+  await db.business.deleteMany({ where: { importId } })
+
+  for (const b of doomed) forgetBadgeBusiness(b.slug)
+  await recountCategories(doomed.flatMap((b) => [b.categoryId, ...b.extraCategories.map((c) => c.id)]))
+
+  await logAudit(
+    session,
+    'business.import_undo',
+    'business',
+    importId,
+    `${doomed.length} listing(s) removed`,
+  )
+  revalidatePath('/admin/businesses')
+  revalidatePath('/admin')
+  revalidatePath('/categories')
+
+  return { undone: true, created: doomed.length }
 }
 
 /**
@@ -462,46 +553,44 @@ export async function deleteBusiness(formData: FormData) {
   revalidatePath('/admin')
 }
 
-export async function adminUpdateBusiness(formData: FormData) {
+/**
+ * Rename a listing.
+ *
+ * Everything else about a profile — categories, links, hours, pictures — is now
+ * edited through the owner's own form, which the admin panel embeds. The name
+ * stays here because owners cannot change theirs: a listing that renames itself
+ * keeps the reviews of the business it used to be.
+ */
+export async function adminRenameBusiness(formData: FormData) {
   const session = await requireAdmin()
   const id = String(formData.get('id'))
-  const categoryId = Number(formData.get('categoryId'))
   const name = String(formData.get('name') ?? '').trim()
-  const email = String(formData.get('email') ?? '').trim()
-  const phone = String(formData.get('phone') ?? '').trim()
-  // admin form has no zod pass — normalise so "example.com" never becomes a
-  // relative link on the public profile
-  const website = externalUrl(String(formData.get('website') ?? ''))
-  const city = String(formData.get('city') ?? '').trim()
-  const state = String(formData.get('state') ?? '').trim()
-  const description = String(formData.get('description') ?? '').trim()
-  if (!name || !email || !city || !state || !Number.isFinite(categoryId)) return
+  if (name.length < 2) return
 
-  // the categories it sat under before this edit, primary and extras alike
-  const before = await categoryIdsOf(id)
-  if (before.length === 0) return
-
-  await db.business.update({
+  const current = await db.business.findUnique({
     where: { id },
-    data: {
-      name,
-      categoryId,
-      email,
-      phone,
-      website,
-      city,
-      state,
-      description: description || null,
-      extraCategories: { set: extraIds(formData, categoryId).map((cid) => ({ id: cid })) },
-    },
+    select: { name: true, city: true, phone: true },
   })
+  if (!current || current.name === name) return
 
-  // an edit can move the primary trade and rewrite the extras, so both the
-  // categories it left and the ones it joined need a fresh count
-  await recountCategories([...before, categoryId, ...extraIds(formData, categoryId)])
-  await logAudit(session, 'business.edit', 'business', id)
+  // a rename must not walk this listing on top of another one
+  const dup = await findDuplicateBusiness({
+    name,
+    city: current.city,
+    phone: current.phone,
+    excludeId: id,
+  })
+  if (dup) {
+    redirect(
+      `/admin/businesses/${id}/edit?duplicate=${encodeURIComponent(duplicateMessage(dup))}&slug=${dup.slug}`,
+    )
+  }
+
+  await db.business.update({ where: { id }, data: { name } })
+
+  await logAudit(session, 'business.rename', 'business', id, `${current.name} → ${name}`)
   revalidatePath('/admin/businesses')
-  redirect('/admin/businesses')
+  revalidatePath(`/admin/businesses/${id}/edit`)
 }
 
 export async function bulkBusinessStatus(formData: FormData) {

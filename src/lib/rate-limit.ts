@@ -40,3 +40,39 @@ export function sweepRateLimits() {
     if (now >= bucket.resetAt) buckets.delete(key)
   }
 }
+
+/**
+ * Best-effort caller identity for anonymous endpoints. Behind the production
+ * reverse proxy the real address arrives in x-forwarded-for; the first entry is
+ * the client and the rest are proxies.
+ */
+export async function callerIp(headerList?: Headers): Promise<string> {
+  const h = headerList ?? (await (await import('next/headers')).headers())
+  const forwarded = h.get('x-forwarded-for')?.split(',')[0]?.trim()
+  return forwarded || h.get('x-real-ip') || 'unknown'
+}
+
+/** Guesses allowed against one email address before it stops answering. */
+const LOGIN_PER_EMAIL = 8
+/** Guesses allowed from one address across all emails — catches spraying. */
+const LOGIN_PER_IP = 30
+const LOGIN_WINDOW_MS = 15 * 60_000
+
+/**
+ * Shared brake for every path that checks a password: the precheck the login
+ * form calls first, and the credentials provider behind it.
+ *
+ * Both consume the *same* per-email bucket on purpose. Separate limits would
+ * hand an attacker the sum of the two, and the provider endpoint is callable
+ * directly — skipping the form entirely.
+ *
+ * Attempts are counted rather than failures, so someone who really does sign in
+ * eight times inside a quarter of an hour waits it out. Cheaper trade than
+ * leaving the endpoint open to unlimited guessing.
+ */
+export function loginAttempt(email: string, ip: string): boolean {
+  const account = email.trim().toLowerCase()
+  const byEmail = rateLimit(`login:${account}`, LOGIN_PER_EMAIL, LOGIN_WINDOW_MS)
+  const byIp = rateLimit(`login-ip:${ip}`, LOGIN_PER_IP, LOGIN_WINDOW_MS)
+  return byEmail.ok && byIp.ok
+}
