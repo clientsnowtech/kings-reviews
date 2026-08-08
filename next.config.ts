@@ -58,6 +58,11 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: 1,
     workerThreads: false,
+    // The CSV importer takes whole directories in one sheet — a hundred thousand
+    // listings is around 35 MB — and a server action body is capped at 1 MB by
+    // default, so the upload was rejected by the framework before the action
+    // ever ran. There is no "unlimited" here, only a number.
+    serverActions: { bodySizeLimit: '50mb' },
   },
   // free version disclosure, no upside
   poweredByHeader: false,

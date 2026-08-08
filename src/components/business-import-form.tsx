@@ -29,7 +29,9 @@ export function BusinessImportForm() {
             required
             className="w-full rounded-lg border bg-background p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mint file:px-3 file:py-1.5 file:text-sm file:font-medium"
           />
-          <p className="mt-1 text-xs text-muted">Up to 500 rows and 2 MB per upload.</p>
+          <p className="mt-1 text-xs text-muted">
+            No row limit. A very large sheet takes a few minutes — leave the tab open.
+          </p>
         </div>
 
         <div>
@@ -108,6 +110,13 @@ export function BusinessImportForm() {
             )}
             {undoState.error && <span className="ml-auto text-xs text-danger">{undoState.error}</span>}
           </div>
+
+          {/* every problem row is listed; 5 000 green ticks would only be scrolled past */}
+          {state.truncated && (
+            <p className="border-b px-4 py-2 text-xs text-muted">
+              Showing a sample — the counts above cover every row.
+            </p>
+          )}
 
           <ul className="divide-y text-sm">
             {state.rows.map((r) => {

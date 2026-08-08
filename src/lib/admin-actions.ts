@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import type { BusinessStatus, ReviewStatus, ReportStatus, Role } from '@prisma/client'
+import type { BusinessStatus, Prisma, ReviewStatus, ReportStatus, Role } from '@prisma/client'
 import { db } from './db'
 import { forgetBadgeBusiness } from './badge-server'
 import { recomputeRating } from './rating'
@@ -217,9 +217,19 @@ export async function adminCreateBusiness(formData: FormData) {
 
 // ---------------------------------------------------------------- csv import
 
-/** One upload, one request — a bigger sheet is split rather than timed out. */
-const IMPORT_MAX_ROWS = 500
-const IMPORT_MAX_BYTES = 2 * 1024 * 1024
+/** rows per INSERT — one 100 000-row statement overruns max_allowed_packet */
+const IMPORT_CHUNK = 500
+/** created rows listed back by name; the rest are only counted */
+const IMPORT_LISTED_OK = 50
+/**
+ * Problem rows listed back.
+ *
+ * There is no row cap on the upload any more, so a sheet with the wrong header
+ * fails every one of its rows — and the result travels to the browser as one
+ * server-action payload. The first few hundred say what is wrong just as well
+ * as a hundred thousand would.
+ */
+const IMPORT_LISTED_BAD = 200
 
 export type ImportRowResult = {
   /** line in the uploaded file, so the admin can fix the row in Excel */
@@ -241,6 +251,14 @@ export type ImportState = {
   importId?: string
   /** set once the batch has been rolled back */
   undone?: boolean
+  /** `rows` lists every problem but only the first few successes */
+  truncated?: boolean
+}
+
+/** Last ten digits — the same line written +91 98765 43210 or 09876543210. */
+function importPhoneKey(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  return digits.length >= 10 ? digits.slice(-10) : ''
 }
 
 /**
@@ -255,6 +273,12 @@ export type ImportState = {
  * is skipped rather than added twice, because the same file gets re-uploaded
  * after a fix all the time. Rows that repeat each other inside one file are
  * caught the same way.
+ *
+ * A directory is seeded from sheets of tens of thousands of rows, so nothing
+ * here runs per row against the database: the duplicate index and the taken
+ * slugs are read once up front and kept in memory, and the listings go in as
+ * chunked inserts. Doing it a row at a time was three round-trips each, and
+ * the host times out long before a sheet this size finishes.
  */
 export async function adminImportBusinesses(
   _prev: ImportState,
@@ -264,13 +288,15 @@ export async function adminImportBusinesses(
 
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) return { error: 'Choose a CSV file first.' }
-  if (file.size > IMPORT_MAX_BYTES) return { error: 'That file is over 2 MB — split it.' }
 
+  // No row or size cap: a directory is seeded from one sheet of a hundred
+  // thousand listings, and splitting that by hand is the whole problem. What
+  // does bound it is the host — the file is parsed in memory and the request
+  // has to survive the insert, so a sheet big enough to run either of those out
+  // fails as a timeout. If that happens, the fix is a smaller file, not a
+  // retry. `serverActions.bodySizeLimit` in next.config.ts caps the upload.
   const { records } = csvRecords(parseCsv(await file.text()))
   if (records.length === 0) return { error: 'No data rows found under the header.' }
-  if (records.length > IMPORT_MAX_ROWS) {
-    return { error: `Up to ${IMPORT_MAX_ROWS} rows per upload — this file has ${records.length}.` }
-  }
 
   const dryRun = formData.get('dryRun') === 'on'
   const defaultStatus = formData.get('status') === 'PENDING' ? 'PENDING' : 'LIVE'
@@ -283,11 +309,43 @@ export async function adminImportBusinesses(
     byName.set(c.slug.toLowerCase(), c.id)
   }
 
+  // The whole duplicate test, read once. Two listings are the same shop when
+  // they share a phone number, or a name inside one city — see
+  // findDuplicateBusiness, which this mirrors row-for-row.
+  const existing = await db.business.findMany({
+    select: { name: true, slug: true, city: true, phone: true },
+  })
+  const takenSlugs = new Set(existing.map((b) => b.slug))
+  type Match = { name: string; city: string; fresh: boolean }
+  const byNameCity = new Map<string, Match>()
+  const byPhone = new Map<string, Match>()
+  for (const b of existing) {
+    const match: Match = { name: b.name, city: b.city, fresh: false }
+    byNameCity.set(`${slugify(b.name)}|${b.city.trim().toLowerCase()}`, match)
+    const key = importPhoneKey(b.phone)
+    if (key) byPhone.set(key, match)
+  }
+
+  /** A slug nobody has taken — including rows earlier in this same file. */
+  const claimSlug = (name: string) => {
+    const base = slugify(name) || 'listing'
+    let slug = base
+    for (let i = 2; takenSlugs.has(slug); i++) slug = `${base}-${i}`
+    takenSlugs.add(slug)
+    return slug
+  }
+
   const rows: ImportRowResult[] = []
   const touched = new Set<number>()
   const owners = new Map<string, string>()
-  const seen = new Set<string>()
   const audits: { action: string; entity: string; entityId: string; detail: string }[] = []
+  const pending: Prisma.BusinessCreateManyInput[] = []
+  const withExtras: { id: string; extras: number[] }[] = []
+  let created = 0
+  let skipped = 0
+  let failed = 0
+  let listedOk = 0
+  let listedBad = 0
   // one id for the whole run — a sheet that turns out wrong is undone in a click
   const importId = crypto.randomUUID()
   // told after the loop: 500 SMTP round-trips mid-import would stall the request
@@ -295,8 +353,19 @@ export async function adminImportBusinesses(
 
   for (const r of records) {
     const name = r.get('name', 'business name', 'business')
-    const push = (outcome: ImportRowResult['outcome'], message?: string) =>
+    const push = (outcome: ImportRowResult['outcome'], message?: string) => {
+      if (outcome === 'created') {
+        created++
+        if (listedOk >= IMPORT_LISTED_OK) return
+        listedOk++
+      } else {
+        if (outcome === 'skipped') skipped++
+        else failed++
+        if (listedBad >= IMPORT_LISTED_BAD) return
+        listedBad++
+      }
       rows.push({ line: r.line, name: name || '(unnamed)', outcome, message })
+    }
 
     if (!name) {
       push('error', 'Name is empty')
@@ -347,19 +416,21 @@ export async function adminImportBusinesses(
 
     // a re-upload after fixing a few rows must not double the ones that worked
     const key = `${slugify(name)}|${data.city.trim().toLowerCase()}`
-    const phoneKey = data.phone.replace(/\D/g, '').slice(-10)
-    if (seen.has(key) || (phoneKey.length === 10 && seen.has(phoneKey))) {
-      push('skipped', 'Duplicate of an earlier row in this file')
-      continue
-    }
-    seen.add(key)
-    if (phoneKey.length === 10) seen.add(phoneKey)
-
-    const clash = await findDuplicateBusiness({ name, city: data.city, phone: data.phone })
+    const phoneKey = importPhoneKey(data.phone)
+    const clash = (phoneKey && byPhone.get(phoneKey)) || byNameCity.get(key)
     if (clash) {
-      push('skipped', duplicateMessage(clash))
+      const reason = phoneKey && byPhone.get(phoneKey) ? 'phone' : 'name'
+      push(
+        'skipped',
+        clash.fresh
+          ? 'Duplicate of an earlier row in this file'
+          : duplicateMessage({ id: '', slug: '', name: clash.name, city: clash.city, reason }),
+      )
       continue
     }
+    const mine: Match = { name, city: data.city, fresh: true }
+    byNameCity.set(key, mine)
+    if (phoneKey) byPhone.set(phoneKey, mine)
 
     const extraIdsForRow = [
       ...new Set(
@@ -385,56 +456,68 @@ export async function adminImportBusinesses(
       owners.set(ownerEmail, ownerId)
     }
 
-    const slug = await uniqueSlug(name)
-    const business = await db.business.create({
-      data: {
-        ownerId,
-        categoryId,
-        importId,
-        slug,
-        name,
-        email: data.email,
-        phone: data.phone,
-        website: data.website || null,
-        whatsapp: data.whatsapp || null,
-        tagline: data.tagline || null,
-        description: data.description || null,
-        foundedYear: data.foundedYear ?? null,
-        instagram: data.instagram || null,
-        facebook: data.facebook || null,
-        address: data.address || null,
-        city: data.city,
-        state: data.state,
-        pincode: data.pincode || null,
-        mapUrl: data.mapUrl || null,
-        contactName: data.contactName || null,
-        contactRole: data.contactRole || null,
-        contactEmail: data.contactEmail || null,
-        contactPhone: data.contactPhone || null,
-        // listed by an admin, still not verified — verification has its own queue
-        status: status as BusinessStatus,
-        extraCategories: { connect: extraIdsForRow.map((id) => ({ id })) },
-      },
-      select: { id: true },
+    // the id is minted here rather than by the database, because a chunked
+    // insert gives nothing back to hang the audit entry on
+    const id = crypto.randomUUID()
+    const slug = claimSlug(name)
+    pending.push({
+      id,
+      ownerId,
+      categoryId,
+      importId,
+      slug,
+      name,
+      email: data.email,
+      phone: data.phone,
+      website: data.website || null,
+      whatsapp: data.whatsapp || null,
+      tagline: data.tagline || null,
+      description: data.description || null,
+      foundedYear: data.foundedYear ?? null,
+      instagram: data.instagram || null,
+      facebook: data.facebook || null,
+      address: data.address || null,
+      city: data.city,
+      state: data.state,
+      pincode: data.pincode || null,
+      mapUrl: data.mapUrl || null,
+      contactName: data.contactName || null,
+      contactRole: data.contactRole || null,
+      contactEmail: data.contactEmail || null,
+      contactPhone: data.contactPhone || null,
+      // listed by an admin, still not verified — verification has its own queue
+      status: status as BusinessStatus,
     })
+    // createMany cannot touch a relation table, so the extras are linked after
+    if (extraIdsForRow.length) withExtras.push({ id, extras: extraIdsForRow })
 
     touched.add(categoryId)
-    for (const id of extraIdsForRow) touched.add(id)
+    for (const extraId of extraIdsForRow) touched.add(extraId)
     if (ownerIsNew) claims.push({ to: ownerEmail, businessName: name, city: data.city, slug })
     audits.push({
       action: 'business.create',
       entity: 'business',
-      entityId: business.id,
+      entityId: id,
       detail: `${name} · CSV import (${file.name}, line ${r.line})`,
     })
     push('created')
   }
 
   if (!dryRun) {
+    for (let i = 0; i < pending.length; i += IMPORT_CHUNK) {
+      await db.business.createMany({ data: pending.slice(i, i + IMPORT_CHUNK) })
+    }
+    for (const row of withExtras) {
+      await db.business.update({
+        where: { id: row.id },
+        data: { extraCategories: { connect: row.extras.map((id) => ({ id })) } },
+      })
+    }
+
     await recountCategories(touched)
-    if (audits.length) {
+    for (let i = 0; i < audits.length; i += IMPORT_CHUNK) {
       await db.auditLog.createMany({
-        data: audits.map((a) => ({
+        data: audits.slice(i, i + IMPORT_CHUNK).map((a) => ({
           ...a,
           actorId: session.user.id,
           actorEmail: session.user.email ?? '',
@@ -450,14 +533,13 @@ export async function adminImportBusinesses(
     revalidatePath('/categories')
   }
 
-  const created = rows.filter((r) => r.outcome === 'created').length
-
   return {
     dryRun,
     created,
-    skipped: rows.filter((r) => r.outcome === 'skipped').length,
-    failed: rows.filter((r) => r.outcome === 'error').length,
+    skipped,
+    failed,
     rows,
+    truncated: created > listedOk || skipped + failed > listedBad,
     importId: !dryRun && created > 0 ? importId : undefined,
   }
 }

@@ -44,7 +44,8 @@ export default async function AdminImportBusinesses() {
         <div>
           <h2 className="text-xl font-bold">Import businesses from CSV</h2>
           <p className="mt-1 text-sm text-muted">
-            Every row is judged on its own — a bad row is reported by line number and the rest still land.
+            Every row is judged on its own — a bad row is reported by line number and the rest still
+            land.
           </p>
         </div>
         <a
