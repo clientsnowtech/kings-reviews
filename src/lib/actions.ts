@@ -72,6 +72,36 @@ export async function registerUser(
 
 // ---------------------------------------------------------------- reviews
 
+/**
+ * The four contact-person fields, read the same way by register and edit.
+ *
+ * They describe a named human rather than the business, so they are stored but
+ * never published — no public query selects them.
+ */
+function contactPerson(formData: FormData) {
+  return {
+    contactName: formData.get('contactName'),
+    contactRole: formData.get('contactRole'),
+    contactEmail: formData.get('contactEmail'),
+    contactPhone: formData.get('contactPhone'),
+  }
+}
+
+/** …and the same four ready for Prisma, where blank means "nobody named". */
+function contactPersonData(d: {
+  contactName?: string
+  contactRole?: string
+  contactEmail?: string
+  contactPhone?: string
+}) {
+  return {
+    contactName: d.contactName || null,
+    contactRole: d.contactRole || null,
+    contactEmail: d.contactEmail || null,
+    contactPhone: d.contactPhone || null,
+  }
+}
+
 export async function createReview(
   _prev: ActionState,
   formData: FormData,
@@ -275,6 +305,7 @@ export async function registerBusiness(
     state: formData.get('state'),
     pincode: formData.get('pincode'),
     mapUrl: formData.get('mapUrl'),
+    ...contactPerson(formData),
   })
   if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
 
@@ -328,6 +359,7 @@ export async function registerBusiness(
       state: parsed.data.state,
       pincode: parsed.data.pincode || null,
       mapUrl: parsed.data.mapUrl || null,
+      ...contactPersonData(parsed.data),
       logo: logo ?? null,
       cover: cover ?? null,
       // Nothing an owner lists is public until an admin approves it. Every
@@ -387,6 +419,7 @@ export async function updateBusiness(
     state: formData.get('state'),
     pincode: formData.get('pincode'),
     mapUrl: formData.get('mapUrl'),
+    ...contactPerson(formData),
   })
   if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
 
@@ -446,6 +479,7 @@ export async function updateBusiness(
       state: parsed.data.state,
       pincode: parsed.data.pincode || null,
       mapUrl: parsed.data.mapUrl || null,
+      ...contactPersonData(parsed.data),
       extraCategories: {
         set: extraCategoryIds(formData, parsed.data.categoryId).map((id) => ({ id })),
       },

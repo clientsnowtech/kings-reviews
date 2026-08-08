@@ -133,6 +133,14 @@ model Business {
   state   String
   pincode String?
 
+  // Who we talk to at the business, as opposed to the switchboard above. Kept
+  // off every public page on purpose: this is a named person, and nobody
+  // listing a shop expects their own number on the profile.
+  contactName  String?
+  contactRole  String?
+  contactEmail String?
+  contactPhone String?
+
   // the CSV run that created this row, so one bad import can be undone whole
   importId          String?
   // scans of the printed QR card — otherwise the print is invisible to its owner

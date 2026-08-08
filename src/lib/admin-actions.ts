@@ -186,6 +186,11 @@ export async function adminCreateBusiness(formData: FormData) {
       whatsapp: str('whatsapp') || null,
       mapUrl: externalUrl(str('mapUrl')),
       description: str('description') || null,
+      // the named person we deal with — stored, never published
+      contactName: str('contactName') || null,
+      contactRole: str('contactRole') || null,
+      contactEmail: str('contactEmail') || null,
+      contactPhone: str('contactPhone') || null,
       // added by an admin, but still not verified — verification has its own queue
       status,
       extraCategories: { connect: extraIds(formData, categoryId).map((id) => ({ id })) },
@@ -328,6 +333,11 @@ export async function adminImportBusinesses(
       state: r.get('state'),
       pincode: r.get('pincode', 'pin', 'zip'),
       mapUrl: r.get('map url', 'map', 'google maps'),
+      // the person behind the listing, kept off the public profile
+      contactName: r.get('contact name', 'contact person'),
+      contactRole: r.get('contact role', 'designation'),
+      contactEmail: r.get('contact email'),
+      contactPhone: r.get('contact phone', 'contact mobile'),
     })
     if (!parsed.success) {
       push('error', parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '))
@@ -397,6 +407,10 @@ export async function adminImportBusinesses(
         state: data.state,
         pincode: data.pincode || null,
         mapUrl: data.mapUrl || null,
+        contactName: data.contactName || null,
+        contactRole: data.contactRole || null,
+        contactEmail: data.contactEmail || null,
+        contactPhone: data.contactPhone || null,
         // listed by an admin, still not verified — verification has its own queue
         status: status as BusinessStatus,
         extraCategories: { connect: extraIdsForRow.map((id) => ({ id })) },

@@ -47,6 +47,11 @@ const businessProfile = {
   state: z.string().min(2, 'State required').max(80),
   pincode: z.string().max(10).optional().or(z.literal('')),
   mapUrl: z.string().max(1000).optional().or(z.literal('')),
+  // the person behind the listing — never published, so none of it is required
+  contactName: z.string().max(80, 'Name too long').optional().or(z.literal('')),
+  contactRole: z.string().max(80, 'Too long').optional().or(z.literal('')),
+  contactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  contactPhone: z.string().max(20, 'Invalid phone').optional().or(z.literal('')),
 } as const
 
 export const businessSchema = z.object({

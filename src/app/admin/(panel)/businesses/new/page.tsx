@@ -83,6 +83,32 @@ export default async function AdminNewBusiness({
           profile.
         </p>
 
+        {/* the named human behind the listing — kept off the public page */}
+        <fieldset className="rounded-xl border p-4">
+          <legend className="px-1 text-sm font-medium">Contact person</legend>
+          <p className="mb-3 text-xs text-muted">
+            Who we deal with about this listing. Never shown on the public profile.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={label}>Full name</label>
+              <input name="contactName" className={field} placeholder="e.g. Priya Sharma" />
+            </div>
+            <div>
+              <label className={label}>Role</label>
+              <input name="contactRole" className={field} placeholder="e.g. Owner, Manager" />
+            </div>
+            <div>
+              <label className={label}>Email</label>
+              <input name="contactEmail" type="email" className={field} />
+            </div>
+            <div>
+              <label className={label}>Phone</label>
+              <input name="contactPhone" className={field} placeholder="+91 …" />
+            </div>
+          </div>
+        </fieldset>
+
         <LocationPicker />
 
         <div>

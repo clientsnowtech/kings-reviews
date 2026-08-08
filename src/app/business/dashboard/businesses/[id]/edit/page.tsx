@@ -140,6 +140,10 @@ export default async function EditBusinessPage({
           mapUrl: business.mapUrl,
           logo: business.logo,
           cover: business.cover,
+          contactName: business.contactName,
+          contactRole: business.contactRole,
+          contactEmail: business.contactEmail,
+          contactPhone: business.contactPhone,
         }}
         categories={categories}
         extraCategoryIds={extraCategoryIds}

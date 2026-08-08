@@ -25,9 +25,10 @@ export const metadata: Metadata = {
     'Discover and review businesses across India. Honest customer ratings and reviews for restaurants, hotels, services and more.',
   // Search-console ownership proof. A bare meta tag — no script, no cookie — so
   // it sits outside the consent gate that Analytics() lives behind.
-  verification: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION
-    ? { yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION }
-    : undefined,
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || undefined,
+    yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || undefined,
+  },
 }
 
 function FooterCol({ title, links }: { title: string; links: [string, string][] }) {

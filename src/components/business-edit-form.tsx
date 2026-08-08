@@ -10,6 +10,7 @@ import {
   FileText,
   MapPin,
   ImageIcon,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import { updateBusiness, type ActionState } from '@/lib/actions'
@@ -38,6 +39,10 @@ type Biz = {
   mapUrl: string | null
   logo: string | null
   cover: string | null
+  contactName: string | null
+  contactRole: string | null
+  contactEmail: string | null
+  contactPhone: string | null
 }
 
 /**
@@ -143,8 +148,8 @@ export function BusinessEditForm({
 
       {/* Each of these turns into one action button on the public profile. */}
       <Card
-        title="Contact links"
-        desc="Every field you fill becomes a button on your profile — Call, WhatsApp, Directions, Website, Email."
+        title="Company contact"
+        desc="The business's own lines. Every field you fill becomes a button on your profile — Call, WhatsApp, Directions, Website, Email."
         icon={PhoneCall}
       >
         <div className="grid gap-5 sm:grid-cols-2">
@@ -161,6 +166,21 @@ export function BusinessEditForm({
           placeholder="https://maps.app.goo.gl/…"
           hint="Shown as the Directions button."
         />
+      </Card>
+
+      {/* Deliberately after the public block, and marked private in the copy:
+          this is a named person, not the business. */}
+      <Card
+        title="Contact person"
+        desc="Who we should speak to about this listing. Never shown on your public profile — it stays between you and us."
+        icon={UserRound}
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Full name" name="contactName" defaultValue={business.contactName ?? ''} error={fe.contactName} placeholder="e.g. Priya Sharma" />
+          <Field label="Role" name="contactRole" defaultValue={business.contactRole ?? ''} error={fe.contactRole} placeholder="e.g. Owner, Manager" />
+          <Field label="Email" name="contactEmail" type="email" defaultValue={business.contactEmail ?? ''} error={fe.contactEmail} placeholder="priya@business.in" />
+          <Field label="Phone" name="contactPhone" defaultValue={business.contactPhone ?? ''} error={fe.contactPhone} placeholder="+91 …" />
+        </div>
       </Card>
 
       <Card title="Social profiles" desc="Optional. Shown as icons on your profile." icon={Share2}>

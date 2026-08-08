@@ -106,8 +106,8 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
 
       {/* 3. Contact */}
       <Section
-        title="Contact"
-        desc="Each field becomes an action button on your profile — Call, WhatsApp, Directions, Website, Email."
+        title="Company contact"
+        desc="The business's own lines. Each field becomes an action button on your profile — Call, WhatsApp, Directions, Website, Email."
       >
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Contact email" name="email" type="email" required error={fe.email} placeholder="contact@business.in" hint="Shown as the Email button." />
@@ -126,7 +126,22 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
         />
       </Section>
 
-      {/* 4. Social */}
+      {/* 4. Who we talk to — stored, never published */}
+      <Section
+        title="Contact person"
+        desc="Who we should speak to about this listing. Never shown on your public profile — it stays between you and us."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Full name" name="contactName" error={fe.contactName} placeholder="e.g. Priya Sharma" />
+          <Field label="Role" name="contactRole" error={fe.contactRole} placeholder="e.g. Owner, Manager" />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Email" name="contactEmail" type="email" error={fe.contactEmail} placeholder="priya@business.in" />
+          <Field label="Phone" name="contactPhone" error={fe.contactPhone} placeholder="+91 …" />
+        </div>
+      </Section>
+
+      {/* 5. Social */}
       <Section title="Social profiles" desc="Optional — links to your social pages.">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Instagram" name="instagram" error={fe.instagram} placeholder="@handle or profile URL" />
@@ -134,7 +149,7 @@ export function BusinessRegisterForm({ categories }: { categories: CategoryOptio
         </div>
       </Section>
 
-      {/* 5. Location */}
+      {/* 6. Location */}
       <Section title="Location" desc="Where you operate.">
         <Field label="Address" name="address" error={fe.address} placeholder="Shop / building, street, area" />
         <LocationPicker stateError={fe.state} cityError={fe.city} />

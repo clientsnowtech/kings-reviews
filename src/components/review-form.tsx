@@ -34,6 +34,12 @@ export function ReviewForm({
   const [dropped, setDropped] = useState(0)
   const [shrinking, setShrinking] = useState(false)
 
+  // Held here rather than left to the DOM: React resets an uncontrolled form
+  // once its action returns, so a rejected review used to take the writing with
+  // it — the one moment someone least wants to start again.
+  const [title, setTitle] = useState(existing?.title ?? '')
+  const [body, setBody] = useState(existing?.body ?? '')
+
   // The server runs the same rules, but telling someone their link is a problem
   // only after a round-trip reads like a rejection — say it while they type.
   const [liveErrors, setLiveErrors] = useState<{ title?: string; body?: string }>({})
@@ -55,6 +61,19 @@ export function ReviewForm({
     if (state.ok) done.current?.()
   }, [state.ok])
 
+  // The reset that clears the text also empties the file input, which would
+  // leave the thumbnails on screen and the photos out of the next attempt. The
+  // shrunk files are kept and put back so what you can see is what gets sent.
+  const fileInput = useRef<HTMLInputElement>(null)
+  const chosenFiles = useRef<File[]>([])
+  useEffect(() => {
+    const input = fileInput.current
+    if (state.ok || !input || input.files?.length || !chosenFiles.current.length) return
+    const dt = new DataTransfer()
+    chosenFiles.current.forEach((f) => dt.items.add(f))
+    input.files = dt.files
+  }, [state])
+
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target
     const picked = Array.from(input.files ?? [])
@@ -73,6 +92,7 @@ export function ReviewForm({
     setShrinking(true)
     const files = await compressInput(input)
     setShrinking(false)
+    chosenFiles.current = files
 
     setPreviews((old) => {
       old.forEach(URL.revokeObjectURL)
@@ -127,8 +147,11 @@ export function ReviewForm({
         <div>
           <input
             name="title"
-            defaultValue={existing?.title}
-            onChange={check('title')}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              check('title')(e)
+            }}
             placeholder="Summarise your experience"
             className="h-11 w-full rounded-lg border bg-background px-3 outline-none focus:border-brand"
           />
@@ -139,8 +162,11 @@ export function ReviewForm({
         <div>
           <textarea
             name="body"
-            defaultValue={existing?.body}
-            onChange={check('body')}
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value)
+              check('body')(e)
+            }}
             rows={5}
             placeholder="Tell others about your experience — what happened, what was good or bad?"
             className="w-full rounded-lg border bg-background p-3 outline-none focus:border-brand"
@@ -160,7 +186,15 @@ export function ReviewForm({
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted hover:border-brand hover:text-brand">
           <ImagePlus size={16} />
           Add photos
-          <input type="file" name="images" accept="image/*" multiple className="hidden" onChange={onFiles} />
+          <input
+            ref={fileInput}
+            type="file"
+            name="images"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={onFiles}
+          />
         </label>
         {previews.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">

@@ -121,6 +121,10 @@ export default async function AdminEditBusiness({
           mapUrl: business.mapUrl,
           logo: business.logo,
           cover: business.cover,
+          contactName: business.contactName,
+          contactRole: business.contactRole,
+          contactEmail: business.contactEmail,
+          contactPhone: business.contactPhone,
         }}
         categories={categories}
         extraCategoryIds={extras.map((c) => c.id)}
