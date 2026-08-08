@@ -22,7 +22,8 @@ const INK = '#0f1b17'
 const MUTED = '#5c6b66'
 const CREAM = '#fbfaf3'
 const MINT = '#e7f5ef'
-const STAR = '#00b67a'
+// same gold as --star in globals.css and the badge
+const STAR = '#f5a623'
 const STAR_EMPTY = '#d7dde0'
 
 const STAR_PATH =

@@ -1,6 +1,9 @@
 import { db } from '@/lib/db'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
+/** A relative Location keeps the reader on whatever host they scanned into. */
+function redirect(to: string) {
+  return new Response(null, { status: 302, headers: { Location: to } })
+}
 
 /**
  * Short review link — what the printed QR actually carries.
@@ -14,14 +17,11 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
  * scan is counted here. It counts requests, not people — a link preview or a
  * second look inflates it — so it reads as interest, not as visitors.
  */
-export async function GET(req: Request, ctx: { params: Promise<{ slug: string }> }) {
+export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params
-  // stay on the host the scan arrived at — a printed code tested on localhost
-  // or a staging domain must not bounce the reader to production
-  const base = URL.canParse(req.url) ? new URL(req.url).origin : APP_URL
 
   const business = await db.business.findUnique({ where: { slug }, select: { id: true } })
-  if (!business) return Response.redirect(new URL('/', base), 302)
+  if (!business) return redirect('/')
 
   try {
     await db.business.update({ where: { id: business.id }, data: { qrScans: { increment: 1 } } })
@@ -31,5 +31,5 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
     console.error('[qr scan not counted]', slug, err)
   }
 
-  return Response.redirect(new URL(`/company/${slug}?review=ask&src=qr`, base), 302)
+  return redirect(`/company/${slug}?review=ask&src=qr`)
 }

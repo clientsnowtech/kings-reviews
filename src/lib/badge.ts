@@ -104,7 +104,9 @@ const THEMES: Record<BadgeTheme, ThemeDef> = {
 export const CREDIT_URL = 'https://www.clientsnow.in/'
 export const CREDIT_NAME = 'ClientsNow'
 
-const STAR_FILL = '#00b67a'
+// keep in step with --star in globals.css: a badge on someone's site and the
+// stars on ours show the same rating, so they cannot be two different colours
+const STAR_FILL = '#f5a623'
 const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 const STAR_PATH = 'M12 2l2.9 6.26 6.1.53-4.6 4.01 1.38 6.7L12 16.9 6.22 19.5 7.6 12.8 3 8.79l6.1-.53z'
 

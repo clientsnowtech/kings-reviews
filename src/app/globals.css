@@ -11,7 +11,9 @@
   --mint: #e7f5ef;
   --mint-2: #d6ede3;
   --cream: #fbfaf3;
-  --star: #00b67a;
+  /* Gold: the colour a rating is read as everywhere else. The green star was
+     on-brand but scanned as "verified" rather than "rated". */
+  --star: #f5a623;
   --star-empty: #d7dde0;
   --danger: #d33a3a;
 }
