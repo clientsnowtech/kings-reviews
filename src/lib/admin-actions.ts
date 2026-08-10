@@ -14,6 +14,7 @@ import {
   findDuplicateBusiness,
   duplicateMessage,
 } from './business'
+import { forgetCities } from './cities'
 import { sendMail, businessDecisionMail, businessClaimMail } from './mail'
 import { setActingOwner, clearActingOwner } from './impersonation'
 import { slugify, externalUrl } from './utils'
@@ -74,6 +75,8 @@ export async function setBusinessStatus(formData: FormData) {
     },
   })
   forgetBadgeBusiness(biz.slug)
+  // going live can be the first listing in its city, or the last one out of it
+  forgetCities()
   await recountCategories([biz.categoryId, ...biz.extraCategories.map((c) => c.id)])
 
   // The owner cannot see this queue, so a decision that never reaches them
@@ -514,6 +517,8 @@ export async function adminImportBusinesses(
       })
     }
 
+    // a sheet of a hundred thousand rows brings cities the list has never seen
+    forgetCities()
     await recountCategories(touched)
     for (let i = 0; i < audits.length; i += IMPORT_CHUNK) {
       await db.auditLog.createMany({
@@ -643,6 +648,7 @@ export async function deleteBusiness(formData: FormData) {
   // capture the categories before the row (and its links) disappear
   const categoryIds = await categoryIdsOf(id)
   await db.business.delete({ where: { id } })
+  forgetCities()
   await recountCategories(categoryIds)
   await logAudit(session, 'business.delete', 'business', id, biz?.name)
   revalidatePath('/admin/businesses')
@@ -703,6 +709,7 @@ export async function bulkBusinessStatus(formData: FormData) {
     where: { id: { in: ids } },
     data: { status, verifiedAt: status === 'LIVE' ? new Date() : null },
   })
+  forgetCities()
   await recountCategories(
     affected.flatMap((b) => [b.categoryId, ...b.extraCategories.map((c) => c.id)]),
   )

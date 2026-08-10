@@ -14,6 +14,8 @@ import {
   actAsOwner,
 } from '@/lib/admin-actions'
 import { formatDate } from '@/lib/utils'
+import { cityNames } from '@/lib/cities'
+import { SearchableSelect } from '@/components/searchable-select'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,17 +35,19 @@ const NEXT_ACTIONS: Record<BusinessStatus, { status: BusinessStatus; label: stri
 export default async function AdminBusinesses({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>
+  searchParams: Promise<{ status?: string; q?: string; city?: string; page?: string }>
 }) {
-  const { status, q, page: pageRaw } = await searchParams
+  const { status, q, city, page: pageRaw } = await searchParams
   const filter = STATUSES.includes(status as BusinessStatus) ? (status as BusinessStatus) : 'ALL'
   const page = Math.max(1, Number(pageRaw) || 1)
 
   const where: Prisma.BusinessWhereInput = {}
   if (filter !== 'ALL') where.status = filter
+  // exact, unlike the search box — "Anand" as a search also drags in Anandnagar
+  if (city) where.city = city
   if (q) where.OR = [{ name: { contains: q } }, { city: { contains: q } }, { email: { contains: q } }]
 
-  const [total, businesses] = await Promise.all([
+  const [total, businesses, cities] = await Promise.all([
     db.business.count({ where }),
     db.business.findMany({
       where,
@@ -52,6 +56,7 @@ export default async function AdminBusinesses({
       take: PER_PAGE,
       include: { category: { select: { name: true } }, owner: { select: { email: true } } },
     }),
+    cityNames(),
   ])
   const pageCount = Math.ceil(total / PER_PAGE)
 
@@ -80,6 +85,7 @@ export default async function AdminBusinesses({
           </a>
           <form className="relative">
             {filter !== 'ALL' && <input type="hidden" name="status" value={filter} />}
+            {city && <input type="hidden" name="city" value={city} />}
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               name="q"
@@ -91,12 +97,42 @@ export default async function AdminBusinesses({
         </div>
       </div>
 
+      {/* One city at a time is how a hundred thousand listings get worked
+          through — the free-text box matches too loosely to sort by. */}
+      {cities.length > 1 && (
+        <form className="flex flex-wrap items-end gap-2 rounded-lg border bg-surface p-2.5 text-sm">
+          {filter !== 'ALL' && <input type="hidden" name="status" value={filter} />}
+          {q && <input type="hidden" name="q" value={q} />}
+          <div className="w-64">
+            <label className="mb-1 block text-xs text-muted">City</label>
+            <SearchableSelect
+              name="city"
+              options={cities}
+              defaultValue={city ?? ''}
+              placeholder="All cities"
+            />
+          </div>
+          <button className="h-11 rounded-lg bg-brand px-5 font-medium text-white hover:bg-brand-strong">
+            Filter
+          </button>
+          {city && (
+            <Link
+              href={`/admin/businesses${filter === 'ALL' ? '' : `?status=${filter}`}`}
+              className="inline-flex h-11 items-center rounded-lg border px-4 text-muted hover:bg-mint"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {STATUSES.map((s) => {
           const active = filter === s
           const params = new URLSearchParams()
           if (s !== 'ALL') params.set('status', s)
           if (q) params.set('q', q)
+          if (city) params.set('city', city)
           const href = `/admin/businesses${params.toString() ? `?${params}` : ''}`
           return (
             <Link
@@ -239,7 +275,7 @@ export default async function AdminBusinesses({
         page={page}
         pageCount={pageCount}
         total={total}
-        params={{ status: filter === 'ALL' ? undefined : filter, q }}
+        params={{ status: filter === 'ALL' ? undefined : filter, q, city }}
       />
     </div>
   )

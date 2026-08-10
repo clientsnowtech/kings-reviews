@@ -86,6 +86,7 @@ export function MobileMenu({ role }: { role: Role | null }) {
             <div className={`flex flex-col gap-1 ${closing ? '' : 'stagger'}`}>
               <MobileLink href="/businesses" onClick={close}>Businesses</MobileLink>
               <MobileLink href="/categories" onClick={close}>Categories</MobileLink>
+              <MobileLink href="/cities" onClick={close}>Cities</MobileLink>
               {(!signedIn || role === 'USER') && (
                 <MobileLink href="/business/register" onClick={close}>For businesses</MobileLink>
               )}

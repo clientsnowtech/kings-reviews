@@ -179,6 +179,9 @@ model Business {
   @@index([ownerId])
   @@index([categoryId, status])
   @@index([city, status])
+  // the state filter and the city-by-state dropdown, which scanned the whole
+  // table once the directory passed a hundred thousand listings
+  @@index([state, city])
   @@index([status, ratingAvg])
   @@index([name])
   @@index([importId])

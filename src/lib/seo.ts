@@ -108,6 +108,68 @@ export function categoryMetadata({
   }
 }
 
+type CityMetaInput = {
+  /** the city as it is written on the listings */
+  name: string
+  slug: string
+  /** live listings in this city, after the category filter */
+  count: number
+  /** the states this name appears in */
+  states: string[]
+  /** the ?category= filter in play, by name */
+  category?: string
+  /** true when a non-default sort or a later page is showing */
+  filteredView?: boolean
+}
+
+/**
+ * Head for a city page.
+ *
+ * "Businesses in Ahmedabad" is what people type, and the only URL that answered
+ * it was a query string on /businesses — which no crawler was ever given a
+ * reason to follow. A category inside a city gets its own canonical for the
+ * same reason a city inside a category does; sorts and later pages canonicalise
+ * back, because reordering the same listings is not a new page.
+ */
+export function cityMetadata({
+  name,
+  slug,
+  count,
+  states,
+  category,
+  filteredView,
+}: CityMetaInput): Metadata {
+  const region = states.length === 1 ? `${name}, ${states[0]}` : name
+  const title = category
+    ? `Best ${category} in ${name} — Reviews & Ratings`
+    : `Businesses in ${name} — Reviews & Ratings`
+
+  const description = clampDescription(
+    `Browse ${count.toLocaleString('en-IN')} verified ${
+      category ? `${category.toLowerCase()} ` : ''
+    }listing${count === 1 ? '' : 's'} in ${region} on ${SITE_NAME}. Ratings, contact details and genuine customer reviews — free to browse.`,
+  )
+
+  const path = `/city/${slug}`
+  const canonical = category ? `${path}?category=${encodeURIComponent(category)}` : path
+
+  return {
+    title,
+    description,
+    keywords: [
+      `businesses in ${name}`,
+      `companies in ${name}`,
+      `${name} business directory`,
+      `top rated businesses in ${name}`,
+      ...(category ? [`${category} in ${name}`, `best ${category} in ${name}`] : []),
+    ],
+    alternates: { canonical },
+    robots: filteredView ? { index: false, follow: true } : { index: true, follow: true },
+    openGraph: { type: 'website', siteName: SITE_NAME, url: canonical, title, description },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
+
 type ListedBusiness = {
   slug: string
   name: string
@@ -158,6 +220,73 @@ export function categoryJsonLd({
         '@type': 'ItemList',
         '@id': `${url}#listings`,
         name: city ? `${name} in ${city}` : `${name} in India`,
+        numberOfItems: businesses.length,
+        itemListElement: businesses.map((b, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          url: `${SITE_URL}/company/${b.slug}`,
+          name: b.name,
+        })),
+      },
+    ],
+  }
+}
+
+/**
+ * CollectionPage + ItemList + BreadcrumbList for a city.
+ *
+ * Same shape as the category graph, and the same restraint: names and URLs
+ * only, because repeating a rating on a list page is markup Google reads as
+ * spam. The place itself is stated once, so the page is about a location rather
+ * than about the word.
+ */
+export function cityJsonLd({
+  name,
+  slug,
+  states,
+  description,
+  businesses,
+  category,
+}: {
+  name: string
+  slug: string
+  states: string[]
+  description: string
+  businesses: ListedBusiness[]
+  category?: string
+}) {
+  const url = `${SITE_URL}/city/${slug}${category ? `?category=${encodeURIComponent(category)}` : ''}`
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': url,
+        url,
+        name: category ? `${category} in ${name}` : `Businesses in ${name}`,
+        description,
+        about: {
+          '@type': 'City',
+          name,
+          ...(states.length === 1
+            ? { containedInPlace: { '@type': 'AdministrativeArea', name: states[0] } }
+            : {}),
+        },
+        isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Cities', item: `${SITE_URL}/cities` },
+            { '@type': 'ListItem', position: 3, name, item: `${SITE_URL}/city/${slug}` },
+          ],
+        },
+      },
+      {
+        '@type': 'ItemList',
+        '@id': `${url}#listings`,
+        name: category ? `${category} in ${name}` : `Businesses in ${name}`,
         numberOfItems: businesses.length,
         itemListElement: businesses.map((b, i) => ({
           '@type': 'ListItem',

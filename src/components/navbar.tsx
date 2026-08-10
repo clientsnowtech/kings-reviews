@@ -27,6 +27,9 @@ export function Navbar() {
           <Link href="/categories" className="hidden rounded-md px-3 py-2 hover:bg-background md:block">
             Categories
           </Link>
+          <Link href="/cities" className="hidden rounded-md px-3 py-2 hover:bg-background md:block">
+            Cities
+          </Link>
 
           <Suspense fallback={<NavAuthSkeleton />}>
             <NavAuth />

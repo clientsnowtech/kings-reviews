@@ -5,6 +5,8 @@ import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { BusinessCard } from '@/components/business-card'
 import { SearchableSelect } from '@/components/searchable-select'
+import { cityNames, findCityBySlug, stateNames } from '@/lib/cities'
+import { slugify } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,10 +93,13 @@ export default async function BusinessesPage({
       : {}),
     ...(sp.state ? { state: sp.state } : {}),
     ...(sp.city ? { city: sp.city } : {}),
+    // "plumber ahmedabad" is one string to the person typing it, so the city is
+    // matched too rather than turning the whole query into nothing.
     ...(query
       ? {
           OR: [
             { name: { contains: query } },
+            { city: { contains: query } },
             { description: { contains: query } },
             { category: { name: { contains: query } } },
           ],
@@ -102,7 +107,7 @@ export default async function BusinessesPage({
       : {}),
   }
 
-  const [total, businesses, cityRows, stateRows] = await Promise.all([
+  const [total, businesses, cities, states, searchedCity] = await Promise.all([
     db.business.count({ where }),
     db.business.findMany({
       where,
@@ -113,23 +118,13 @@ export default async function BusinessesPage({
     }),
     // Cities are narrowed to the chosen state — a flat list of every city in
     // the country is unusable, and half of it cannot match anyway.
-    db.business.findMany({
-      where: { status: 'LIVE', ...(sp.state ? { state: sp.state } : {}) },
-      distinct: ['city'],
-      select: { city: true },
-      orderBy: { city: 'asc' },
-    }),
-    db.business.findMany({
-      where: { status: 'LIVE' },
-      distinct: ['state'],
-      select: { state: true },
-      orderBy: { state: 'asc' },
-    }),
+    cityNames(sp.state),
+    stateNames(),
+    // typed a city name into the search box? offer the page built for it
+    query ? findCityBySlug(slugify(query)) : null,
   ])
 
   const pages = Math.max(1, Math.ceil(total / PER_PAGE))
-  const cities = cityRows.map((c) => c.city)
-  const states = stateRows.map((s) => s.state)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -157,6 +152,18 @@ export default async function BusinessesPage({
           className="h-12 w-full rounded-full border bg-surface pl-11 pr-4 outline-none focus:border-brand"
         />
       </form>
+
+      {/* The search box takes a city name as readily as a trade, and the city
+          has a page of its own — say so instead of leaving it as a text match. */}
+      {searchedCity && !sp.city && (
+        <Link
+          href={`/city/${searchedCity.slug}`}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/5 px-4 py-1.5 text-sm text-brand hover:bg-brand/10"
+        >
+          <MapPin size={14} />
+          All {searchedCity.count.toLocaleString('en-IN')} businesses in {searchedCity.name}
+        </Link>
+      )}
 
       {/* category chips */}
       <div className="mt-5 flex flex-wrap gap-2 text-sm">
