@@ -102,7 +102,7 @@ export async function loadMailConfig(): Promise<MailConfig | null> {
           host: row.host,
           port: row.port,
           username: row.username,
-          password: decryptSecret(row.password),
+          password: decryptSecret(row.password ?? ''),
           fromName: row.fromName,
           fromEmail: row.fromEmail,
           enabled: row.enabled,
@@ -158,7 +158,7 @@ export async function saveMailConfig(input: SaveMailInput): Promise<void> {
     where: { id: ROW_ID },
     select: { password: true },
   })
-  const password = input.password ? encryptSecret(input.password) : (existing?.password ?? '')
+  const password = input.password ? encryptSecret(input.password) : (existing?.password ?? null)
 
   const data = {
     host: input.host,

@@ -357,8 +357,10 @@ model MailSetting {
   host      String   @default("smtp-relay.brevo.com")
   port      Int      @default(587)
   username  String   @default("")
-  /// AES-256-GCM, keyed from AUTH_SECRET — never stored as it was typed
-  password  String   @default("") @db.Text
+  /// AES-256-GCM, keyed from AUTH_SECRET — never stored as it was typed.
+  /// Nullable rather than defaulted: MySQL refuses a default on a TEXT column,
+  /// and MariaDB accepting one locally is what hid that until the deploy.
+  password  String?  @db.Text
   fromName  String   @default("TrustIndex")
   fromEmail String   @default("")
   /// off keeps the settings but stops sending, the way no settings at all does
