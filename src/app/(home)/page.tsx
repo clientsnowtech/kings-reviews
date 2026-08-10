@@ -4,6 +4,7 @@ import { Search, PencilLine, Building2, ShieldCheck, Star, MapPin, BadgeCheck, A
 import { db } from '@/lib/db'
 import { BusinessCard } from '@/components/business-card'
 import { CategoryIcon } from '@/components/category-icon'
+import { NavSearch } from '@/components/nav-search'
 import { Stars } from '@/components/stars'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
 
@@ -59,44 +60,54 @@ const websiteSchema = {
 }
 
 export default async function Home() {
-  const [categories, topRated, recent, totalBiz, totalReviews, cities] = await Promise.all([
-    // Busiest first, and only ones with something to show — the directory
-    // carries Google's full ~4,000 categories, nearly all of them empty.
-    db.category.findMany({
-      where: {
-        OR: [
-          { businesses: { some: { status: 'LIVE' } } },
-          { extraFor: { some: { status: 'LIVE' } } },
-        ],
-      },
-      orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
-      take: 8,
-    }),
-    db.business.findMany({
-      where: { status: 'LIVE' },
-      orderBy: [{ ratingCount: 'desc' }, { ratingAvg: 'desc' }],
-      take: 6,
-      include: { category: { select: { name: true, slug: true } } },
-    }),
-    db.review.findMany({
-      where: { status: 'LIVE' },
-      orderBy: { createdAt: 'desc' },
-      take: 6,
-      include: {
-        user: { select: { name: true, email: true } },
-        business: { select: { name: true, slug: true, logo: true } },
-      },
-    }),
-    db.business.count({ where: { status: 'LIVE' } }),
-    db.review.count({ where: { status: 'LIVE' } }),
-    db.business.findMany({
-      where: { status: 'LIVE' },
-      distinct: ['city'],
-      select: { city: true },
-      orderBy: { city: 'asc' },
-      take: 12,
-    }),
-  ])
+  // Only categories with something to show — the directory carries Google's
+  // full ~4,000, nearly all of them empty. Same test the /categories page uses,
+  // so its total and the one on the stats band agree.
+  const live = { some: { status: 'LIVE' as const } }
+  const listed = { OR: [{ businesses: live }, { extraFor: live }] }
+
+  const [categories, topRated, recent, totalBiz, totalReviews, totalCategories, rating, cities] =
+    await Promise.all([
+      // busiest first
+      db.category.findMany({
+        where: listed,
+        orderBy: [{ listingCount: 'desc' }, { name: 'asc' }],
+        take: 8,
+      }),
+      db.business.findMany({
+        where: { status: 'LIVE' },
+        orderBy: [{ ratingCount: 'desc' }, { ratingAvg: 'desc' }],
+        take: 6,
+        include: { category: { select: { name: true, slug: true } } },
+      }),
+      db.review.findMany({
+        where: { status: 'LIVE' },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        include: {
+          user: { select: { name: true, email: true } },
+          business: { select: { name: true, slug: true, logo: true } },
+        },
+      }),
+      db.business.count({ where: { status: 'LIVE' } }),
+      db.review.count({ where: { status: 'LIVE' } }),
+      // the whole shelf, not the eight tiles below it
+      db.category.count({ where: listed }),
+      // the headline rating, averaged over the reviews that are actually public
+      db.review.aggregate({ where: { status: 'LIVE' }, _avg: { rating: true } }),
+      db.business.findMany({
+        where: { status: 'LIVE' },
+        distinct: ['city'],
+        select: { city: true },
+        orderBy: { city: 'asc' },
+        take: 12,
+      }),
+    ])
+
+  // A directory with no reviews yet has no average to show — printing 0.0 out
+  // of 5 reads as a terrible score rather than as an empty shelf.
+  const avgRating = rating._avg.rating ?? 0
+  const avgLabel = totalReviews > 0 ? avgRating.toFixed(1) : '—'
 
   return (
     <div>
@@ -121,24 +132,17 @@ export default async function Home() {
               Discover businesses across India through honest customer reviews — and share your own.
             </p>
 
-            <form action="/search" className="relative mt-8 w-full max-w-xl">
-              <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-              <input
-                name="q"
-                placeholder="Search a company, e.g. Spice Villa"
-                className="h-14 w-full rounded-full border bg-white pl-12 pr-32 text-base shadow-soft outline-none focus:border-brand"
-              />
-              <button className="absolute right-2 top-2 h-10 rounded-full bg-brand px-6 font-semibold text-white transition hover:bg-brand-strong">
-                Search
-              </button>
-            </form>
+            {/* same typeahead as the navbar — a company, a trade or a town */}
+            <NavSearch size="lg" className="mt-8 w-full max-w-xl" />
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-              <div className="flex items-center gap-2">
-                <Stars value={4.8} size="md" />
-                <span className="text-sm font-semibold">4.8/5</span>
-                <span className="text-sm text-muted">from {totalReviews.toLocaleString('en-IN')} reviews</span>
-              </div>
+              {totalReviews > 0 && (
+                <div className="flex items-center gap-2">
+                  <Stars value={avgRating} size="md" />
+                  <span className="text-sm font-semibold">{avgLabel}/5</span>
+                  <span className="text-sm text-muted">from {totalReviews.toLocaleString('en-IN')} reviews</span>
+                </div>
+              )}
               <Link
                 href="/business/register"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:gap-2.5"
@@ -154,9 +158,11 @@ export default async function Home() {
       <section className="mx-auto -mt-8 max-w-6xl px-4">
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border bg-border shadow-soft sm:grid-cols-4">
           <Kpi value={totalBiz.toLocaleString('en-IN')} label="Businesses listed" icon={<Building2 size={18} />} />
-          <Kpi value={totalReviews.toLocaleString('en-IN')} label="Verified reviews" icon={<BadgeCheck size={18} />} />
-          <Kpi value={categories.length.toString()} label="Categories" icon={<TrendingUp size={18} />} />
-          <Kpi value="4.8" label="Avg rating" icon={<Star size={18} />} />
+          {/* published, not verified — verification is a business's badge, and
+              claiming it for every review is a claim we cannot back */}
+          <Kpi value={totalReviews.toLocaleString('en-IN')} label="Customer reviews" icon={<BadgeCheck size={18} />} />
+          <Kpi value={totalCategories.toLocaleString('en-IN')} label="Categories" icon={<TrendingUp size={18} />} />
+          <Kpi value={avgLabel} label="Avg rating" icon={<Star size={18} />} />
         </div>
       </section>
 

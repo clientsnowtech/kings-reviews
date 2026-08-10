@@ -21,7 +21,7 @@ const COLUMNS: [string, string][] = [
     'The person behind the listing. Never shown on the public profile.',
   ],
   ['contact_email, contact_phone', 'How to reach that person. Also kept private.'],
-  ['owner_email', 'Who owns the listing. Blank leaves it under you.'],
+  ['owner_email', "Who owns the listing. Blank uses the row's own email."],
   ['status', 'LIVE or PENDING. Blank uses the dropdown below.'],
 ]
 

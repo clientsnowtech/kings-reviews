@@ -9,8 +9,12 @@ export default function robots(): MetadataRoute.Robots {
       // badge images are hotlinked from customer sites, so they stay crawlable
       allow: ['/', '/api/badge/'],
       // /r/ is the review short-link — it only ever redirects, so crawling it
-      // spends budget to land on a page the sitemap already lists
+      // spends budget to land on a page the sitemap already lists.
+      // /sitemaps/ is what sitemap_<n>.xml rewrites to internally; the
+      // numbered name is the one to fetch, and this keeps the raw path from
+      // being crawled as a second copy of it.
       disallow: [
+        '/sitemaps/',
         '/business/dashboard',
         '/my/',
         '/api/',

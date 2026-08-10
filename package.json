@@ -19,6 +19,7 @@
     "db:reset": "tsx prisma/reset.ts",
     "db:reseed": "tsx prisma/reset.ts && prisma db seed",
     "reviews:publish-due": "tsx scripts/publish-due-reviews.ts",
+    "mail:welcome": "tsx scripts/send-owner-welcome.ts",
     "db:recount": "tsx scripts/recount-categories.ts"
   },
   "dependencies": {

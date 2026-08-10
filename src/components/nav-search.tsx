@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Search, Star, X } from 'lucide-react'
+import { Loader2, MapPin, Search, Star, X } from 'lucide-react'
 import { CategoryIcon } from '@/components/category-icon'
 import { colorFrom, initials } from '@/lib/utils'
 
@@ -20,6 +20,8 @@ type Hit = {
 
 type CatHit = { id: number; name: string; slug: string; icon: string | null }
 
+type CityHit = { name: string; slug: string; count: number; state: string | null }
+
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 200
 
@@ -27,14 +29,30 @@ const DEBOUNCE_MS = 200
  * Navbar typeahead. Debounced fetch against /api/search with the previous
  * request aborted, so a fast typist never sees an older response land last.
  * Still a real <form> — Enter with nothing highlighted goes to /search.
+ *
+ * One box, three kinds of answer: the business, the trade it is in, and the
+ * town it is in. Each group links where that kind of answer lives.
  */
-export function NavSearch({ className = '' }: { className?: string }) {
+export function NavSearch({
+  className = '',
+  size = 'md',
+}: {
+  className?: string
+  /** 'lg' is the hero bar: taller, on white, with a visible Search button. */
+  size?: 'md' | 'lg'
+}) {
   const router = useRouter()
   const listId = useId()
+  const lg = size === 'lg'
 
   const [q, setQ] = useState('')
   // results carry the term they answered, so a stale payload can never paint
-  const [data, setData] = useState<{ term: string; biz: Hit[]; cats: CatHit[] } | null>(null)
+  const [data, setData] = useState<{
+    term: string
+    biz: Hit[]
+    cats: CatHit[]
+    cities: CityHit[]
+  } | null>(null)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
 
@@ -46,12 +64,14 @@ export function NavSearch({ className = '' }: { className?: string }) {
   const fresh = data?.term === term
   const biz = fresh ? data.biz : []
   const cats = fresh ? data.cats : []
+  const cities = fresh ? data.cities : []
   const loading = ready && !fresh
 
-  // flat option list drives keyboard nav: businesses → categories → "see all"
+  // flat option list drives keyboard nav: businesses → categories → cities → all
   const options: { key: string; href: string }[] = [
     ...biz.map((b) => ({ key: `b${b.id}`, href: `/company/${b.slug}` })),
     ...cats.map((c) => ({ key: `c${c.id}`, href: `/category/${c.slug}` })),
+    ...cities.map((c) => ({ key: `l${c.slug}`, href: `/city/${c.slug}` })),
     ...(ready ? [{ key: 'all', href: `/search?q=${encodeURIComponent(term)}` }] : []),
   ]
 
@@ -66,11 +86,20 @@ export function NavSearch({ className = '' }: { className?: string }) {
           signal: ctrl.signal,
         })
         if (!res.ok) throw new Error(String(res.status))
-        const json = (await res.json()) as { businesses: Hit[]; categories: CatHit[] }
-        setData({ term, biz: json.businesses ?? [], cats: json.categories ?? [] })
+        const json = (await res.json()) as {
+          businesses: Hit[]
+          categories: CatHit[]
+          cities: CityHit[]
+        }
+        setData({
+          term,
+          biz: json.businesses ?? [],
+          cats: json.categories ?? [],
+          cities: json.cities ?? [],
+        })
       } catch {
         // offline or throttled — settle on "nothing" instead of spinning forever
-        if (!ctrl.signal.aborted) setData({ term, biz: [], cats: [] })
+        if (!ctrl.signal.aborted) setData({ term, biz: [], cats: [], cities: [] })
       }
     }, DEBOUNCE_MS)
 
@@ -88,8 +117,13 @@ export function NavSearch({ className = '' }: { className?: string }) {
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
 
+  // once the query has been answered by a page, the box has said its piece —
+  // leaving the term behind only makes the next search a delete job first
   function go(href: string) {
     setOpen(false)
+    setQ('')
+    setData(null)
+    setActive(-1)
     inputRef.current?.blur()
     router.push(href)
   }
@@ -114,7 +148,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
   }
 
   const showPanel = open && ready
-  const empty = !loading && biz.length === 0 && cats.length === 0
+  const empty = !loading && biz.length === 0 && cats.length === 0 && cities.length === 0
 
   return (
     <div ref={boxRef} className={`relative ${className}`}>
@@ -125,7 +159,12 @@ export function NavSearch({ className = '' }: { className?: string }) {
           if (term) go(`/search?q=${encodeURIComponent(term)}`)
         }}
       >
-        <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <Search
+          size={lg ? 20 : 18}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted ${
+            lg ? 'left-4' : 'left-3'
+          }`}
+        />
         <input
           ref={inputRef}
           value={q}
@@ -139,17 +178,26 @@ export function NavSearch({ className = '' }: { className?: string }) {
           name="q"
           type="text"
           autoComplete="off"
-          placeholder="Search company or category…"
-          aria-label="Search businesses and categories"
+          placeholder="Search company, category or city…"
+          aria-label="Search businesses, categories and cities"
           role="combobox"
           aria-expanded={showPanel}
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-${options[active]?.key}` : undefined}
-          className="h-10 w-full rounded-full border bg-background pl-10 pr-10 text-sm outline-none focus:border-brand"
+          className={
+            lg
+              ? 'h-14 w-full rounded-full border bg-white pl-12 pr-40 text-base shadow-soft outline-none focus:border-brand'
+              : 'h-10 w-full rounded-full border bg-background pl-10 pr-10 text-sm outline-none focus:border-brand'
+          }
         />
         {loading ? (
-          <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-muted" />
+          <Loader2
+            size={16}
+            className={`absolute top-1/2 -translate-y-1/2 animate-spin text-muted ${
+              lg ? 'right-32' : 'right-3.5'
+            }`}
+          />
         ) : (
           q && (
             <button
@@ -160,11 +208,18 @@ export function NavSearch({ className = '' }: { className?: string }) {
                 inputRef.current?.focus()
               }}
               aria-label="Clear search"
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-mint hover:text-foreground"
+              className={`absolute top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-mint hover:text-foreground ${
+                lg ? 'right-[7.5rem]' : 'right-2'
+              }`}
             >
               <X size={15} />
             </button>
           )
+        )}
+        {lg && (
+          <button className="absolute right-2 top-2 h-10 rounded-full bg-brand px-6 font-semibold text-white transition hover:bg-brand-strong">
+            Search
+          </button>
         )}
       </form>
 
@@ -173,7 +228,9 @@ export function NavSearch({ className = '' }: { className?: string }) {
           id={listId}
           role="listbox"
           aria-label="Search suggestions"
-          className="animate-fade-down absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border bg-white shadow-float"
+          className={`animate-fade-down absolute left-0 right-0 z-50 overflow-hidden rounded-2xl border bg-white text-left shadow-float ${
+            lg ? 'top-16' : 'top-12'
+          }`}
         >
           {empty ? (
             <p className="px-4 py-6 text-center text-sm text-muted">
@@ -252,6 +309,37 @@ export function NavSearch({ className = '' }: { className?: string }) {
                   ))}
                 </>
               )}
+
+              {cities.length > 0 && (
+                <>
+                  <p className="border-t px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    Locations
+                  </p>
+                  {cities.map((c, i) => (
+                    <Row
+                      key={c.slug}
+                      id={`${listId}-l${c.slug}`}
+                      href={`/city/${c.slug}`}
+                      activeRow={active === biz.length + cats.length + i}
+                      onHover={() => setActive(biz.length + cats.length + i)}
+                      onPick={go}
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-mint text-brand">
+                        <MapPin size={17} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{c.name}</span>
+                        {c.state && (
+                          <span className="block truncate text-xs text-muted">{c.state}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted">
+                        {c.count.toLocaleString('en-IN')}
+                      </span>
+                    </Row>
+                  ))}
+                </>
+              )}
             </>
           )}
 
@@ -260,7 +348,10 @@ export function NavSearch({ className = '' }: { className?: string }) {
             role="option"
             aria-selected={active === options.length - 1}
             href={`/search?q=${encodeURIComponent(term)}`}
-            onClick={() => setOpen(false)}
+            onClick={(e) => {
+              e.preventDefault()
+              go(`/search?q=${encodeURIComponent(term)}`)
+            }}
             onMouseEnter={() => setActive(options.length - 1)}
             className={`block border-t px-4 py-3 text-sm font-semibold text-brand ${
               active === options.length - 1 ? 'bg-mint' : 'hover:bg-mint'

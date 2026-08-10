@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Award,
+  Pencil,
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { tierFor } from '@/lib/badge'
@@ -24,6 +25,8 @@ import { PhotoLightbox } from '@/components/photo-lightbox'
 import { ShareButton } from '@/components/share-button'
 import { HelpfulButton } from '@/components/helpful-button'
 import { ReviewControls } from '@/components/review-controls'
+import { AskForReview } from '@/components/ask-for-review'
+import { askTargets } from '@/lib/review-link'
 import { ReviewBody } from '@/components/review-body'
 import { WhatsAppIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons'
 import { publishOverdueReviews } from '@/lib/review-sla'
@@ -167,6 +170,17 @@ export default async function CompanyPage({
     : null
 
   const isOwner = session?.user?.id === b.ownerId
+  const isAdmin = session?.user?.role === 'ADMIN'
+  const canManage = isOwner || isAdmin
+
+  // Whoever can manage this listing gets the two things they came back for —
+  // the edit form and the invite kit — without a detour through a dashboard.
+  // An admin edits through the admin form, which is the one that can touch
+  // ownership and status.
+  const editHref = isAdmin
+    ? `/admin/businesses/${b.id}/edit`
+    : `/business/dashboard/businesses/${b.id}/edit`
+  const askTarget = canManage ? await askTargets([b]) : []
 
   // owners get nudged from their own profile page — a review nobody approves
   // is a review nobody reads
@@ -283,20 +297,24 @@ export default async function CompanyPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Breadcrumb — desktop only. On a phone it wraps above the fold and
-          pushes the name and rating down for no navigational gain; the back
-          gesture is what people use there. Hidden with CSS rather than dropped,
-          so the crawler still gets the trail. */}
-      <nav
-        aria-label="Breadcrumb"
-        className="mb-4 hidden flex-wrap items-center gap-1 text-xs text-muted sm:flex"
-      >
-        <Link href="/" className="hover:text-brand">Home</Link>
-        <ChevronRight size={13} />
-        <Link href={`/category/${b.category.slug}`} className="hover:text-brand">{b.category.name}</Link>
-        <ChevronRight size={13} />
-        <span className="text-foreground/70">{b.name}</span>
-      </nav>
+      {/* Manage bar — only for the owner and for staff. It sits where the
+          breadcrumb used to, above the fold, because an owner who lands here
+          from an invite link is here to fix a detail or send another card, and
+          the dashboard is two navigations away. */}
+      {canManage && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand/20 bg-mint px-4 py-3">
+          <span className="mr-auto text-xs font-medium text-brand-strong">
+            {isOwner ? 'You manage this listing.' : 'Admin view.'}
+          </span>
+          <Link
+            href={editHref}
+            className="inline-flex items-center gap-1.5 rounded-lg border bg-surface px-3.5 py-2 text-sm font-medium transition hover:border-brand hover:text-brand"
+          >
+            <Pencil size={15} /> Edit business
+          </Link>
+          {askTarget.length > 0 && <AskForReview businesses={askTarget} />}
+        </div>
+      )}
 
       {/* header card */}
       <div className="overflow-hidden rounded-2xl border bg-surface shadow-soft">

@@ -16,6 +16,8 @@ import {
 } from './business'
 import { forgetCities } from './cities'
 import { sendMail, businessDecisionMail, businessClaimMail } from './mail'
+import { alreadyInvited } from './password-token'
+import { welcomeOwner, welcomeOwnerOfBusiness, welcomeCandidates } from './owner-welcome'
 import { setActingOwner, clearActingOwner } from './impersonation'
 import { slugify, externalUrl } from './utils'
 import { businessSchema } from './validations'
@@ -81,7 +83,14 @@ export async function setBusinessStatus(formData: FormData) {
 
   // The owner cannot see this queue, so a decision that never reaches them
   // reads as a listing that silently vanished.
-  if (biz.owner?.email) {
+  //
+  // Going live is also the moment an admin-added owner first has something to
+  // manage, so they get the welcome with its set-password link instead — it
+  // carries the same "you are live" news plus the only way into the account.
+  const welcomed =
+    status === 'LIVE' && (await welcomeOwnerOfBusiness(id, { force: true })) === 'sent'
+
+  if (biz.owner?.email && !welcomed) {
     await sendMail(
       businessDecisionMail({
         to: biz.owner.email,
@@ -101,16 +110,12 @@ export async function setBusinessStatus(formData: FormData) {
 /**
  * Whose account owns an admin-added listing.
  *
- * An existing account is reused (and promoted to BUSINESS), an unknown email
- * gets a passwordless account it can claim through Google sign-in, and a blank
- * email leaves the listing under the admin who added it.
+ * An existing account is reused (and promoted to BUSINESS), and an unknown
+ * email gets a passwordless account it can claim through Google sign-in. The
+ * admin is never the owner — a listing belongs to the business it describes —
+ * so when no owner email is named the caller passes the business's own email.
  */
-async function resolveOwnerId(
-  ownerEmail: string,
-  fallbackId: string,
-): Promise<{ id: string; created: boolean }> {
-  if (!ownerEmail) return { id: fallbackId, created: false }
-
+async function resolveOwnerId(ownerEmail: string): Promise<{ id: string; created: boolean }> {
   const existing = await db.user.findUnique({
     where: { email: ownerEmail },
     select: { id: true, role: true },
@@ -144,7 +149,8 @@ async function uniqueSlug(name: string): Promise<string> {
  * Create a listing from the admin panel.
  *
  * Businesses normally register themselves, so a listing always needs an owner —
- * the admin names one by email (see resolveOwnerId).
+ * the admin names one by email, and leaving that blank hands the listing to the
+ * business's own email rather than to the admin (see resolveOwnerId).
  */
 export async function adminCreateBusiness(formData: FormData) {
   const session = await requireAdmin()
@@ -171,7 +177,10 @@ export async function adminCreateBusiness(formData: FormData) {
     )
   }
 
-  const owner = await resolveOwnerId(str('ownerEmail').toLowerCase(), session.user.id)
+  // no owner named? the listing goes to the business's own inbox, never to the
+  // admin who typed it in
+  const ownerEmail = str('ownerEmail').toLowerCase() || email.toLowerCase()
+  const owner = await resolveOwnerId(ownerEmail)
   const ownerId = owner.id
   const slug = await uniqueSlug(name)
 
@@ -205,10 +214,15 @@ export async function adminCreateBusiness(formData: FormData) {
   // person who would have approved it.
   await recountCategories([categoryId, ...extraIds(formData, categoryId)])
 
-  if (owner.created) {
-    await sendMail(
-      businessClaimMail({ to: str('ownerEmail').toLowerCase(), businessName: name, city, slug }),
-    )
+  // Live from the first second means the owner can be told the whole story now:
+  // the page is up, and here is the link that lets them into the account. A
+  // listing parked in the queue has nothing to show yet, so it keeps the older
+  // claim note instead.
+  const welcomed =
+    status === 'LIVE' && (await welcomeOwnerOfBusiness(business.id, { force: true })) === 'sent'
+
+  if (owner.created && !welcomed) {
+    await sendMail(businessClaimMail({ to: ownerEmail, businessName: name, city, slug }))
   }
 
   await logAudit(session, 'business.create', 'business', business.id, name)
@@ -448,12 +462,14 @@ export async function adminImportBusinesses(
       continue
     }
 
-    const ownerEmail = r.get('owner email', 'owner').toLowerCase()
+    // a sheet rarely carries an owner column; without one the listing belongs to
+    // the address printed on it, not to the admin who uploaded the file
+    const ownerEmail = r.get('owner email', 'owner').toLowerCase() || data.email.toLowerCase()
     let ownerId = owners.get(ownerEmail)
     let ownerIsNew = false
     if (!ownerId) {
       // one email may own several rows — resolve it once per file
-      const owner = await resolveOwnerId(ownerEmail, session.user.id)
+      const owner = await resolveOwnerId(ownerEmail)
       ownerId = owner.id
       ownerIsNew = owner.created
       owners.set(ownerEmail, ownerId)
@@ -529,8 +545,13 @@ export async function adminImportBusinesses(
         })),
       })
     }
+    // Same rule as a single admin-added listing: a row that landed live gets
+    // the welcome with its set-password link, and only a row still in the queue
+    // falls back to the plain claim note.
     for (const claim of claims) {
-      await sendMail(businessClaimMail(claim))
+      if ((await welcomeOwner(claim.to, { force: true })) !== 'sent') {
+        await sendMail(businessClaimMail(claim))
+      }
     }
 
     revalidatePath('/admin/businesses')
@@ -703,7 +724,11 @@ export async function bulkBusinessStatus(formData: FormData) {
 
   const affected = await db.business.findMany({
     where: { id: { in: ids } },
-    select: { categoryId: true, extraCategories: { select: { id: true } } },
+    select: {
+      categoryId: true,
+      extraCategories: { select: { id: true } },
+      owner: { select: { email: true } },
+    },
   })
   await db.business.updateMany({
     where: { id: { in: ids } },
@@ -713,6 +738,15 @@ export async function bulkBusinessStatus(formData: FormData) {
   await recountCategories(
     affected.flatMap((b) => [b.categoryId, ...b.extraCategories.map((c) => c.id)]),
   )
+
+  // Approving a screenful at a time is how a CSV import gets published, so the
+  // welcome has to go from here too — deduped, because one owner can hold
+  // several of the listings in the selection.
+  if (status === 'LIVE') {
+    for (const email of new Set(affected.map((b) => b.owner?.email).filter(Boolean) as string[])) {
+      await welcomeOwner(email, { force: true })
+    }
+  }
 
   await logAudit(session, `business.bulk.${status.toLowerCase()}`, 'business', ids.join(','), `${ids.length} businesses`)
   revalidatePath('/admin/businesses')
@@ -862,6 +896,56 @@ export async function setUserRole(formData: FormData) {
   await db.user.update({ where: { id }, data: { role } })
   await logAudit(session, 'user.role', 'user', id, role)
   revalidatePath('/admin/users')
+}
+
+/**
+ * How many owners a single click may mail.
+ *
+ * One SMTP handshake per owner, run one after the other so the host's relay is
+ * not hit with a burst — a few hundred of those outlive any request timeout, so
+ * the run is capped and the page says how many are left.
+ */
+const WELCOME_BATCH = 100
+
+/**
+ * The welcome mail for owners of listings they did not add themselves.
+ *
+ * Only accounts with no password get one: those are the ones locked out, since
+ * the login form needs a password and the register form refuses an email that
+ * already exists. Owners who have a password can already log in, and an
+ * unasked-for password link is not something to send them.
+ *
+ * Anyone already holding a live link is skipped, so pressing the button twice
+ * does not mail the same owner twice — `resend` overrides that for a run whose
+ * mail server was down.
+ */
+export async function sendOwnerWelcomeEmails(formData: FormData) {
+  const session = await requireAdmin()
+  const resend = String(formData.get('resend')) === '1'
+
+  const owners = await welcomeCandidates(true)
+  const invited = resend ? new Set<string>() : await alreadyInvited(owners)
+  const waiting = owners.filter((email) => !invited.has(email))
+  const batch = waiting.slice(0, WELCOME_BATCH)
+
+  let sent = 0
+  let failed = 0
+  for (const email of batch) {
+    const outcome = await welcomeOwner(email, { force: resend })
+    if (outcome === 'sent') sent++
+    else if (outcome === 'failed') failed++
+  }
+
+  const left = waiting.length - batch.length + failed
+  await logAudit(
+    session,
+    'owner.welcome',
+    'user',
+    '—',
+    `sent ${sent}, failed ${failed}, left ${left}`,
+  )
+
+  redirect(`/admin/users?welcome=${sent}.${failed}.${left}`)
 }
 
 // ---------------------------------------------------------------- categories

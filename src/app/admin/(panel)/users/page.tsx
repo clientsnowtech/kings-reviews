@@ -6,7 +6,9 @@ import { requireAdmin } from '@/lib/admin'
 import { Badge } from '@/components/admin-ui'
 import { SubmitButton } from '@/components/submit-button'
 import { Pagination } from '@/components/pagination'
-import { setUserRole } from '@/lib/admin-actions'
+import { setUserRole, sendOwnerWelcomeEmails } from '@/lib/admin-actions'
+import { alreadyInvited } from '@/lib/password-token'
+import { welcomeCandidates } from '@/lib/owner-welcome'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -19,10 +21,10 @@ const PER_PAGE = 30
 export default async function AdminUsers({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; q?: string; page?: string }>
+  searchParams: Promise<{ role?: string; q?: string; page?: string; welcome?: string }>
 }) {
   const session = await requireAdmin()
-  const { role, q, page: pageRaw } = await searchParams
+  const { role, q, page: pageRaw, welcome } = await searchParams
   const filter = ROLES.includes(role as Role) ? (role as Role) : 'ALL'
   const page = Math.max(1, Number(pageRaw) || 1)
 
@@ -42,8 +44,63 @@ export default async function AdminUsers({
   ])
   const pageCount = Math.ceil(total / PER_PAGE)
 
+  // Owners of listings somebody else added: the account exists, but with no
+  // password there is no way into it unless the address happens to be a Google
+  // one. The welcome mail is the only thing that unlocks them.
+  const locked = await welcomeCandidates(true)
+  const invited = await alreadyInvited(locked)
+  const waiting = locked.length - invited.size
+
+  // "sent.failed.left", handed back by the action through the URL
+  const [sent = 0, failed = 0, left = 0] = (welcome ?? '').split('.').map(Number)
+
   return (
     <div className="space-y-5">
+      {welcome && (
+        <p className="rounded-xl border border-brand/30 bg-mint px-4 py-3 text-sm text-brand-strong">
+          {sent} welcome {sent === 1 ? 'mail' : 'mails'} sent
+          {failed > 0 && `, ${failed} failed`}
+          {left > 0 ? ` — ${left} still to go, press the button again.` : ' — none left.'}
+        </p>
+      )}
+
+      {locked.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-surface p-4">
+          <div className="mr-auto min-w-0">
+            <p className="font-semibold">Owner welcome mail</p>
+            <p className="mt-0.5 text-sm text-muted">
+              {locked.length} {locked.length === 1 ? 'owner has' : 'owners have'} no password yet —
+              they cannot log in at all unless their address is a Google one. The mail carries a
+              set-password link that works for 14 days.{' '}
+              {invited.size > 0 && `${invited.size} already hold a live link, `}
+              {waiting} still to be mailed.
+            </p>
+          </div>
+          <form action={sendOwnerWelcomeEmails}>
+            <SubmitButton
+              pendingLabel="Sending…"
+              confirmMessage={`Send the welcome mail to ${Math.min(waiting, 100)} ${
+                waiting === 1 ? 'owner' : 'owners'
+              }?`}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+            >
+              Send welcome mails
+            </SubmitButton>
+          </form>
+          <form action={sendOwnerWelcomeEmails}>
+            <input type="hidden" name="resend" value="1" />
+            <SubmitButton
+              pendingLabel="Sending…"
+              title="Mail everyone again, including owners who already hold a link"
+              confirmMessage="Mail every passwordless owner again, including the ones already invited?"
+              className="rounded-lg border px-4 py-2 text-sm font-medium text-muted hover:bg-mint"
+            >
+              Resend to all
+            </SubmitButton>
+          </form>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-bold">Users</h2>
         <a

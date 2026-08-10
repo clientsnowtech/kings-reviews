@@ -12,6 +12,7 @@ import {
   BadgeCheck,
   ScrollText,
   ShieldBan,
+  Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +25,7 @@ const LINKS = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/words', label: 'Blocked words', icon: ShieldBan },
+  { href: '/admin/communication', label: 'Communication', icon: Mail },
   { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ]
 

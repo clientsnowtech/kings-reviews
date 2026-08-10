@@ -24,6 +24,11 @@ const STATUS_TONE: Record<string, keyof typeof TONES> = {
   USER: 'teal',
   BUSINESS: 'blue',
   ADMIN: 'green',
+  // outbound email — a skipped notification is not a failure, it simply never
+  // left, so the two do not share a colour
+  SENT: 'green',
+  FAILED: 'red',
+  SKIPPED: 'amber',
 }
 
 export function Badge({ status }: { status: string }) {

@@ -127,7 +127,7 @@ export default async function AdminNewBusiness({
               name="ownerEmail"
               type="email"
               className={field}
-              placeholder="Leave blank to own it yourself"
+              placeholder="Leave blank to use the business email"
             />
             <p className="mt-1 text-xs text-muted">
               An unknown email gets an account with no password — its owner claims the listing by

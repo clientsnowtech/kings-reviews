@@ -67,6 +67,15 @@ const nextConfig: NextConfig = {
   // free version disclosure, no upside
   poweredByHeader: false,
 
+  // The sitemap is split into 10,000-URL files named sitemap_1.xml,
+  // sitemap_2.xml and so on, listed by the index at /sitemap.xml. A dynamic
+  // segment has to be a whole path segment, so the number cannot live inside a
+  // route's filename — the handler sits at /sitemaps/<n> and the published
+  // name is rewritten onto it.
+  async rewrites() {
+    return [{ source: '/sitemap_:id(\\d{1,6}).xml', destination: '/sitemaps/:id' }]
+  },
+
   async headers() {
     const hsts = isDev
       ? []

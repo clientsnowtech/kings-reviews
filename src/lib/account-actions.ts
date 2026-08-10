@@ -8,6 +8,7 @@ import { auth } from './auth'
 import { saveImages, deleteUploads } from './upload'
 import { callerIp, loginAttempt, rateLimit } from './rate-limit'
 import { profileSchema, passwordChangeSchema, twoFactorCodeSchema } from './validations'
+import { consumeSetPasswordToken } from './password-token'
 import {
   generateSecret,
   verifyCode,
@@ -125,6 +126,45 @@ export async function changePassword(
 
   revalidatePath('/my/security')
   return { ok: user.password ? 'Password changed' : 'Password set' }
+}
+
+/**
+ * First password, set from the link in the welcome mail.
+ *
+ * No session is involved: the token in the URL is the proof, which is why it is
+ * spent here rather than left usable. Reaching the mailbox also proves the
+ * address, so the account is marked verified on the way past.
+ */
+export async function setPasswordFromToken(
+  _prev: AccountState,
+  formData: FormData,
+): Promise<AccountState> {
+  const token = String(formData.get('token') ?? '')
+
+  // guessing a 32-byte token is hopeless, but the endpoint is public and must
+  // not be free to hammer either
+  if (!rateLimit(`setpwd:${await callerIp()}`, 10, 60_000).ok) {
+    return { error: 'Too many attempts. Wait a minute and try again.' }
+  }
+
+  const parsed = passwordChangeSchema.safeParse({
+    password: formData.get('password'),
+    confirm: formData.get('confirm'),
+  })
+  if (!parsed.success) return { fieldErrors: firstErrors(parsed.error) }
+
+  const email = await consumeSetPasswordToken(token)
+  if (!email) return { error: 'This link has expired or was already used. Ask us for a new one.' }
+
+  const user = await db.user.findUnique({ where: { email }, select: { id: true } })
+  if (!user) return { error: 'That account no longer exists.' }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { password: await bcrypt.hash(parsed.data.password, 10), emailVerified: new Date() },
+  })
+
+  redirect('/login?ready=1')
 }
 
 // ---------------------------------------------------------------- two-factor

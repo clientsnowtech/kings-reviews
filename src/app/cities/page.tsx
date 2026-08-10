@@ -27,6 +27,25 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+/** One city tile — the same card everywhere, so the state lists and the
+ *  "most listed" strip cannot drift apart. */
+function CityCard({ name, slug, count }: { name: string; slug: string; count: number }) {
+  return (
+    <Link
+      href={`/city/${slug}`}
+      className="flex items-center gap-3 rounded-xl border bg-surface p-4 transition hover:border-brand"
+    >
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+        <MapPin size={18} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-semibold">{name}</span>
+        <span className="block text-xs text-muted">{count.toLocaleString('en-IN')} listings</span>
+      </span>
+    </Link>
+  )
+}
+
 export default async function CitiesPage() {
   const cities = await listCities()
   const total = cities.reduce((sum, c) => sum + c.count, 0)
@@ -70,38 +89,18 @@ export default async function CitiesPage() {
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {cities.slice(0, 8).map((c) => (
-              <Link
-                key={c.slug}
-                href={`/city/${c.slug}`}
-                className="flex items-center gap-3 rounded-xl border bg-surface p-4 transition hover:border-brand"
-              >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
-                  <MapPin size={18} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold">{c.name}</span>
-                  <span className="block text-xs text-muted">
-                    {c.count.toLocaleString('en-IN')} listings
-                  </span>
-                </span>
-              </Link>
+              <CityCard key={c.slug} name={c.name} slug={c.slug} count={c.count} />
             ))}
           </div>
 
           {states.map(([state, list]) => (
             <section key={state} className="mt-8">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{state}</h2>
-              <div className="mt-3 flex flex-wrap gap-2 text-sm">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[...list]
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((c) => (
-                    <Link
-                      key={c.slug}
-                      href={`/city/${c.slug}`}
-                      className="rounded-full border bg-surface px-4 py-1.5 transition hover:border-brand"
-                    >
-                      {c.name} <span className="text-muted">{c.count.toLocaleString('en-IN')}</span>
-                    </Link>
+                    <CityCard key={c.slug} name={c.name} slug={c.slug} count={c.count} />
                   ))}
               </div>
             </section>

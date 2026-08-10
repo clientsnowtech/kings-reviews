@@ -1,33 +1,101 @@
 import nodemailer, { type Transporter } from 'nodemailer'
+import { db } from './db'
+import { loadMailConfig, type MailConfig } from './mail-settings'
 
 /**
  * Outbound mail. Everything here is optional: with no SMTP settings the calls
  * turn into a log line, because a missing mail server must never stop someone
  * from posting a review or an owner from approving one.
  *
- * Configure with either SMTP_URL ("smtps://user:pass@host:465") or the
- * SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS quartet, plus MAIL_FROM.
+ * Settings come from Admin → Communication first (lib/mail-settings.ts), and
+ * from the environment when nothing has been saved there — either SMTP_URL
+ * ("smtps://user:pass@host:465") or the SMTP_HOST / SMTP_PORT / SMTP_USER /
+ * SMTP_PASS quartet, plus MAIL_FROM.
  */
-let transport: Transporter | null | undefined
+type Built = { transport: Transporter; from: string } | null
 
-function mailer(): Transporter | null {
-  if (transport !== undefined) return transport
+/**
+ * The transport is cached against the settings it was built from, so a key
+ * rotated in the panel takes effect on the next send rather than the next
+ * restart — a restart being something only the host can do here.
+ */
+let cache: { signature: string; built: Built } | null = null
 
-  const { SMTP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env
-  if (SMTP_URL) {
-    transport = nodemailer.createTransport(SMTP_URL)
-  } else if (SMTP_HOST) {
-    const port = Number(SMTP_PORT ?? 587)
-    transport = nodemailer.createTransport({
+function fromLine(name: string, email: string): string {
+  return name ? `${name} <${email}>` : email
+}
+
+function fromEnv(): { config: MailConfig | null; url?: string } {
+  const { SMTP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM } = process.env
+  if (SMTP_URL) return { config: null, url: SMTP_URL }
+  if (!SMTP_HOST) return { config: null }
+  return {
+    config: {
       host: SMTP_HOST,
-      port,
-      secure: port === 465,
-      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS ?? '' } : undefined,
-    })
-  } else {
-    transport = null
+      port: Number(SMTP_PORT ?? 587),
+      username: SMTP_USER ?? '',
+      password: SMTP_PASS ?? '',
+      // MAIL_FROM is already a whole "Name <address>" line, so it goes through
+      // as the address with no display name of its own
+      fromName: '',
+      fromEmail: MAIL_FROM ?? 'TrustIndex <no-reply@localhost>',
+      enabled: true,
+    },
   }
-  return transport
+}
+
+async function mailer(): Promise<Built> {
+  const saved = await loadMailConfig()
+  const env = saved ? { config: null, url: undefined } : fromEnv()
+
+  const signature = saved
+    ? `db:${saved.enabled}:${saved.host}:${saved.port}:${saved.username}:${saved.password.length}:${saved.fromName}:${saved.fromEmail}`
+    : env.url
+      ? `url:${env.url}`
+      : env.config
+        ? `env:${env.config.host}:${env.config.port}:${env.config.username}:${env.config.fromEmail}`
+        : 'none'
+
+  if (cache?.signature === signature) return cache.built
+
+  let built: Built = null
+  if (saved && saved.enabled && saved.host) {
+    built = {
+      transport: nodemailer.createTransport({
+        host: saved.host,
+        port: saved.port,
+        // 465 is the implicit-TLS port; 587 upgrades through STARTTLS, which
+        // nodemailer does on its own
+        secure: saved.port === 465,
+        auth: saved.username ? { user: saved.username, pass: saved.password } : undefined,
+      }),
+      from: fromLine(saved.fromName, saved.fromEmail || saved.username),
+    }
+  } else if (env.url) {
+    built = {
+      transport: nodemailer.createTransport(env.url),
+      from: process.env.MAIL_FROM ?? 'TrustIndex <no-reply@localhost>',
+    }
+  } else if (env.config) {
+    const c = env.config
+    built = {
+      transport: nodemailer.createTransport({
+        host: c.host,
+        port: c.port,
+        secure: c.port === 465,
+        auth: c.username ? { user: c.username, pass: c.password } : undefined,
+      }),
+      from: c.fromEmail,
+    }
+  }
+
+  cache = { signature, built }
+  return built
+}
+
+/** Drops the cached transport — the settings form calls this after a save. */
+export function forgetMailer() {
+  cache = null
 }
 
 export type Mail = {
@@ -38,23 +106,56 @@ export type Mail = {
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }
 
+export type MailResult = { ok: boolean; skipped: boolean; error?: string }
+
+/** Keeps the log to a size a person can read, and the table to one a host can. */
+const LOG_KEEP = 500
+
+async function record(
+  to: string,
+  subject: string,
+  status: 'SENT' | 'FAILED' | 'SKIPPED',
+  error?: string,
+) {
+  try {
+    const row = await db.emailLog.create({
+      data: { to: to || '—', subject, status, error: error ?? null },
+      select: { id: true },
+    })
+    // pruned on the way past rather than on a schedule: one delete every fifty
+    // sends costs nothing, and nothing else here runs on a timer
+    if (row.id % 50 === 0) {
+      const cutoff = await db.emailLog.findMany({
+        orderBy: { id: 'desc' },
+        skip: LOG_KEEP,
+        take: 1,
+        select: { id: true },
+      })
+      if (cutoff[0]) await db.emailLog.deleteMany({ where: { id: { lte: cutoff[0].id } } })
+    }
+  } catch (err) {
+    // the log is a convenience; it must never be why a notification fails
+    console.error('[mail log failed]', err)
+  }
+}
+
 /** Fire-and-forget: a failed notification is logged, never thrown. */
-export async function sendMail({ to, subject, text, attachments }: Mail): Promise<void> {
-  const t = mailer()
-  if (!t || !to) {
+export async function sendMail({ to, subject, text, attachments }: Mail): Promise<MailResult> {
+  const built = await mailer()
+  if (!built || !to) {
     console.info(`[mail skipped] ${to || 'no address'} — ${subject}`)
-    return
+    await record(to, subject, 'SKIPPED', to ? 'No SMTP settings' : 'No recipient address')
+    return { ok: false, skipped: true }
   }
   try {
-    await t.sendMail({
-      from: process.env.MAIL_FROM ?? 'TrustIndex <no-reply@localhost>',
-      to,
-      subject,
-      text,
-      attachments,
-    })
+    await built.transport.sendMail({ from: built.from, to, subject, text, attachments })
+    await record(to, subject, 'SENT')
+    return { ok: true, skipped: false }
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.error('[mail failed]', subject, err)
+    await record(to, subject, 'FAILED', message)
+    return { ok: false, skipped: false, error: message }
   }
 }
 
@@ -158,6 +259,57 @@ export function businessClaimMail(args: {
       '',
       'Sign in with this email to claim it — you can then edit the listing, reply to reviews and print a QR card that asks customers for one.',
       `${site()}/login`,
+    ].join('\n'),
+  }
+}
+
+/**
+ * The welcome, sent to the owner of a listing somebody else added.
+ *
+ * An admin-created account has no password, so the login form rejects it and
+ * the register form says the email is taken. For those the set-password link is
+ * the whole point of the mail — without it the owner cannot get in at all
+ * unless the address happens to be a Google one. An owner who already has a
+ * password gets the same mail minus the link.
+ */
+export function ownerWelcomeMail(args: {
+  to: string
+  businesses: { name: string; city: string; slug: string }[]
+  /** null for an account that already has a password — it needs no link */
+  url: string | null
+  days: number
+}): Mail {
+  const [first] = args.businesses
+  const more = args.businesses.length - 1
+
+  return {
+    to: args.to,
+    subject: args.url
+      ? more > 0
+        ? 'Your listings on TrustIndex — set your password'
+        : `${first.name} is on TrustIndex — set your password`
+      : more > 0
+        ? 'Your listings on TrustIndex'
+        : `${first.name} is on TrustIndex`,
+    text: [
+      more > 0
+        ? `${first.name} (${first.city}) and ${more} other ${
+            more === 1 ? 'listing' : 'listings'
+          } are on TrustIndex with this address down as the owner.`
+        : `${first.name} (${first.city}) is listed on TrustIndex with this address down as the owner.`,
+      '',
+      ...(args.url
+        ? ['Set your password here and the account is yours:', args.url, `The link works for ${args.days} days.`]
+        : ['Log in with this address to manage it:', `${site()}/login`]),
+      '',
+      'Once you are in you can edit the listing, reply to reviews and print a QR card that asks customers for one.',
+      ...args.businesses.map((b) => `${site()}/company/${b.slug}`),
+      '',
+      `Dashboard: ${site()}/business/dashboard`,
+      '',
+      args.url
+        ? 'If this was not meant for you, ignore this mail — nothing changes until the password is set.'
+        : 'If this was not meant for you, write to us and we will take the listing down.',
     ].join('\n'),
   }
 }

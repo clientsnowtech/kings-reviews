@@ -9,6 +9,8 @@ function LoginInner() {
   const params = useSearchParams()
   const next = params.get('next') || '/post-login'
   const justRegistered = params.get('registered')
+  // arrived from the welcome mail's set-password link
+  const passwordSet = params.get('ready')
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
@@ -22,6 +24,12 @@ function LoginInner() {
       <div className="rounded-2xl border bg-surface p-8">
         <h1 className="text-2xl font-bold">Welcome back</h1>
         <p className="mt-1 text-sm text-muted">Log in to write reviews and manage your business.</p>
+
+        {passwordSet && (
+          <p className="mt-4 rounded-lg bg-brand/10 px-3 py-2 text-sm text-brand">
+            Password set — log in with it now.
+          </p>
+        )}
 
         {justRegistered && (
           <p className="mt-4 rounded-lg bg-brand/10 px-3 py-2 text-sm text-brand">

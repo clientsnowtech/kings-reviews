@@ -346,3 +346,43 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------------- email
+
+/// SMTP credentials, held in the database so an admin can paste a Brevo key
+/// and rotate it without a deploy or a server restart. One row, id 1 — the
+/// environment variables still work and are read when this row is missing.
+model MailSetting {
+  id        Int      @id @default(1)
+  host      String   @default("smtp-relay.brevo.com")
+  port      Int      @default(587)
+  username  String   @default("")
+  /// AES-256-GCM, keyed from AUTH_SECRET — never stored as it was typed
+  password  String   @default("") @db.Text
+  fromName  String   @default("TrustIndex")
+  fromEmail String   @default("")
+  /// off keeps the settings but stops sending, the way no settings at all does
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  /// no transport configured, or sending switched off — the mail never left
+  SKIPPED
+}
+
+/// What actually went out. sendMail swallows transport errors on purpose, so
+/// without this row an admin has no way to tell a delivered notification from
+/// one that died inside a try/catch.
+model EmailLog {
+  id        Int         @id @default(autoincrement())
+  to        String
+  subject   String
+  status    EmailStatus
+  error     String?     @db.Text
+  createdAt DateTime    @default(now())
+
+  @@index([createdAt])
+}
