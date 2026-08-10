@@ -9,6 +9,12 @@ set -euo pipefail
 
 APP=/home/trustindexindia/trustindex
 LOCK=/home/trustindexindia/tmp/deploy.lock
+# The last commit that actually finished a deploy — deliberately not the
+# checked-out HEAD. deploy.sh resets the working copy to origin/master as its
+# first step, so a deploy that dies later still leaves HEAD on the new commit;
+# comparing HEAD then reads as "nothing to do" and the failure is never retried.
+# That is exactly how a build that never ran sat there serving the old .next.
+STATE=/home/trustindexindia/tmp/deployed.sha
 
 mkdir -p "$(dirname "$LOCK")"
 exec 9>"$LOCK"
@@ -18,10 +24,17 @@ flock -n 9 || exit 0
 cd "$APP"
 git fetch --quiet --prune origin
 
-current=$(git rev-parse HEAD)
+deployed=$(cat "$STATE" 2>/dev/null || true)
 target=$(git rev-parse origin/master)
-[ "$current" = "$target" ] && exit 0
+[ "$deployed" = "$target" ] && exit 0
 
-echo "=== $(date -Is) deploying ${current:0:8} -> ${target:0:8}"
-bash "$APP/scripts/deploy.sh"
-echo "=== $(date -Is) deployed ${target:0:8}"
+echo "=== $(date -Is) deploying ${deployed:0:8}${deployed:+ -> }${target:0:8}"
+# A failed deploy has to be shouted about and retried on the next tick, so the
+# state file stays on the last commit that actually worked.
+if bash "$APP/scripts/deploy.sh"; then
+  echo "$target" > "$STATE"
+  echo "=== $(date -Is) deployed ${target:0:8}"
+else
+  echo "=== $(date -Is) DEPLOY FAILED for ${target:0:8} — old build still serving, will retry"
+  exit 1
+fi
