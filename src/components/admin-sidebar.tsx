@@ -13,6 +13,7 @@ import {
   ScrollText,
   ShieldBan,
   Mail,
+  DatabaseBackup,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,7 @@ const LINKS = [
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/words', label: 'Blocked words', icon: ShieldBan },
   { href: '/admin/communication', label: 'Communication', icon: Mail },
+  { href: '/admin/backups', label: 'Backups', icon: DatabaseBackup },
   { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ]
 

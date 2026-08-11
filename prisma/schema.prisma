@@ -379,6 +379,58 @@ model MailSetting {
   updatedAt DateTime @updatedAt
 }
 
+// ---------------------------------------------------------------- backups
+
+/// Where the weekly dump goes once it exists. One row, id 1 — a Drive
+/// connection belongs to the site, not to whichever admin clicked Connect.
+model BackupSetting {
+  id Int @id @default(1)
+
+  /// Google's refresh token, AES-256-GCM under the same key as the SMTP
+  /// password. Nullable rather than defaulted: MySQL refuses a default on a
+  /// TEXT column, which is what broke an earlier deploy.
+  driveToken    String?   @db.Text
+  /// which Google account it belongs to, so the panel can name it
+  driveEmail    String?
+  /// The folder this app created. Under the drive.file scope it can only see
+  /// what it made itself, so a folder picked by hand would be invisible to it.
+  driveFolderId String?
+  connectedAt   DateTime?
+
+  /// how many dumps to keep — on the server's disk and in the Drive folder
+  keep      Int      @default(4)
+  updatedAt DateTime @updatedAt
+}
+
+enum BackupStatus {
+  /// the dump is being written right now
+  RUNNING
+  OK
+  FAILED
+}
+
+/// One row per dump. A backup nobody can see the result of is a backup nobody
+/// trusts — and a cron that quietly stopped working looks exactly like one that
+/// never had anything to say.
+model BackupRun {
+  id       Int          @id @default(autoincrement())
+  status   BackupStatus @default(RUNNING)
+  fileName String
+  /// gzipped size on disk; 0 until the dump finishes
+  bytes    Int          @default(0)
+
+  /// null while the dump has not reached Drive — not connected, or it failed
+  driveFileId String?
+  error       String? @db.Text
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([startedAt])
+}
+
+// ---------------------------------------------------------------- email
+
 enum EmailStatus {
   SENT
   FAILED

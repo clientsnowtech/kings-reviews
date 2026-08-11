@@ -29,6 +29,10 @@ const STATUS_TONE: Record<string, keyof typeof TONES> = {
   SENT: 'green',
   FAILED: 'red',
   SKIPPED: 'amber',
+  // backups: RUNNING is amber for the same reason PENDING is — it is not a
+  // result yet, and reading it as one is how a half-written dump gets trusted
+  OK: 'green',
+  RUNNING: 'amber',
 }
 
 export function Badge({ status }: { status: string }) {
