@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { INDIAN_STATES } from '@/lib/locations'
 import { SearchableSelect } from './searchable-select'
 
@@ -21,6 +21,29 @@ export function LocationPicker({
   cityError?: string
 }) {
   const [state, setState] = useState(defaultState ?? '')
+  const stateRef = useRef<HTMLSelectElement>(null)
+
+  /**
+   * Put the chosen state back after the form resets.
+   *
+   * React empties a `<form action>` once the action returns. Every other field
+   * survives it, because React keeps their default attribute in step with what
+   * is on screen — but a controlled `<select>` has no such attribute to keep,
+   * so the browser falls back to the first option and the picker reads Andhra
+   * Pradesh however the listing is actually filed. Nothing re-renders to argue
+   * with it: our own state never changed. So we write it back ourselves, after
+   * the reset has run.
+   */
+  useEffect(() => {
+    const form = stateRef.current?.form
+    if (!form) return
+    const restore = () =>
+      queueMicrotask(() => {
+        if (stateRef.current && stateRef.current.value !== state) stateRef.current.value = state
+      })
+    form.addEventListener('reset', restore)
+    return () => form.removeEventListener('reset', restore)
+  }, [state])
 
   const cities = INDIAN_STATES.find((s) => s.state === state)?.cities ?? []
   const select = 'h-11 w-full rounded-lg border bg-background px-3 outline-none focus:border-brand'
@@ -32,6 +55,7 @@ export function LocationPicker({
           State <span className="text-danger">*</span>
         </label>
         <select
+          ref={stateRef}
           name="state"
           value={state}
           onChange={(e) => setState(e.target.value)}

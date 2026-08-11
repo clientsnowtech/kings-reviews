@@ -29,6 +29,7 @@ import {
   reviewCardMail,
 } from '../src/lib/mail'
 import { reviewPosterSvg } from '../src/lib/review-qr'
+import { svgToPng } from '../src/lib/svg-raster'
 import { setPasswordUrl, SET_PASSWORD_TTL_DAYS } from '../src/lib/password-token'
 import { db } from '../src/lib/db'
 
@@ -44,19 +45,19 @@ const SECOND = { name: 'Divine Experts', city: 'Ahmedabad', slug: 'divine-expert
  * The real card, rasterised the way the dashboard's does it.
  *
  * The app draws the poster in the browser through canvas; a script has no
- * canvas, so it goes through sharp — which ships with Next rather than being
- * asked for by name here. If that import ever stops resolving, this returns
- * null and the card mail is dropped from the run: a demo attaching a fake QR
- * code teaches the reader nothing about the card and everything wrong about it.
+ * canvas, so it goes through `svgToPng` — sharp with our own fonts bolted on,
+ * because the server has none of its own and drew every line of the card as
+ * boxes. If sharp ever stops resolving, this returns null and the card mail is
+ * dropped from the run: a demo attaching a fake QR code teaches the reader
+ * nothing about the card and everything wrong about it.
  */
 async function realCard(): Promise<Buffer | null> {
   try {
-    const sharp = (await import('sharp')).default
     const svg = reviewPosterSvg({
       name: DEMO.name,
       url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/r/${DEMO.slug}`,
     })
-    return await sharp(Buffer.from(svg)).png().toBuffer()
+    return await svgToPng(svg)
   } catch (err) {
     console.log(`no card: ${err instanceof Error ? err.message : String(err)}`)
     return null

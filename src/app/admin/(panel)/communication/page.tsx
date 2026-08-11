@@ -8,6 +8,7 @@ import {
 } from '@/lib/communication-actions'
 import { SubmitButton } from '@/components/submit-button'
 import { Badge } from '@/components/admin-ui'
+import { EmailLogTable } from '@/components/email-log-table'
 
 export const dynamic = 'force-dynamic'
 
@@ -253,37 +254,20 @@ export default async function CommunicationPage({
             that failed, which is the only place a failure is visible.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border bg-surface">
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="px-4 py-2 font-medium">When</th>
-                  <th className="px-4 py-2 font-medium">To</th>
-                  <th className="px-4 py-2 font-medium">Subject</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {log.map((row) => (
-                  <tr key={row.id} className="align-top">
-                    <td className="whitespace-nowrap px-4 py-2 text-xs text-muted">
-                      {when(row.createdAt)}
-                    </td>
-                    <td className="px-4 py-2">{row.to}</td>
-                    <td className="px-4 py-2">
-                      {row.subject}
-                      {row.error && (
-                        <span className="mt-0.5 block text-xs text-danger">{row.error}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge status={row.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          // `when` is formatted here rather than in the client component: the
+          // server and the browser sit in different time zones often enough that
+          // formatting the same instant twice is a hydration mismatch waiting.
+          <EmailLogTable
+            rows={log.map((row) => ({
+              id: row.id,
+              when: when(row.createdAt),
+              to: row.to,
+              subject: row.subject,
+              status: row.status,
+              error: row.error,
+              html: row.html,
+            }))}
+          />
         )}
       </div>
     </div>

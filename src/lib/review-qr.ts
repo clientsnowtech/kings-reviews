@@ -20,9 +20,12 @@ const MINT = '#e7f5ef'
 const BORDER = '#dfe6e3'
 const INK = '#0f172a'
 const MUTED = '#64748b'
-const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+// 'Noto Sans' leads because that is what the server has: a browser skips past it
+// to system-ui, while the mail rasteriser finds it in `assets/fonts` and stops
+// there. Both draw the same card; only the server has no second choice.
+const FONT = "'Noto Sans',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 // Devanagari needs its own stack — the Latin fonts above draw it as boxes
-const FONT_HI = `'Nirmala UI','Noto Sans Devanagari','Mangal',${FONT}`
+const FONT_HI = `'Noto Sans Devanagari','Nirmala UI','Mangal',${FONT}`
 
 /** Quiet zone. The spec asks for 4 modules; anything less and phones hunt. */
 const MARGIN = 4

@@ -384,6 +384,11 @@ model EmailLog {
   subject   String
   status    EmailStatus
   error     String?     @db.Text
+  /// The rendered body, so the panel can show what was actually sent instead of
+  /// a subject line and a guess. Set-password links are stripped before this is
+  /// written — a log is not a place to leave a working account key. Nullable
+  /// because every row written before this column existed has none.
+  html      String?     @db.Text
   createdAt DateTime    @default(now())
 
   @@index([createdAt])

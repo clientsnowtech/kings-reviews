@@ -118,15 +118,31 @@ export type MailResult = { ok: boolean; skipped: boolean; error?: string }
 /** Keeps the log to a size a person can read, and the table to one a host can. */
 const LOG_KEEP = 500
 
+/**
+ * A set-password link is a working key to somebody's account, and this log is
+ * read by every admin and carried in every database dump. The stored preview
+ * keeps the mail's shape and loses the token.
+ */
+function redact(html: string): string {
+  return html.replace(/(\/set-password\/)[^\s"'<>]+/g, '$1&hellip;')
+}
+
 async function record(
   to: string,
   subject: string,
   status: 'SENT' | 'FAILED' | 'SKIPPED',
   error?: string,
+  html?: string,
 ) {
   try {
     const row = await db.emailLog.create({
-      data: { to: to || '—', subject, status, error: error ?? null },
+      data: {
+        to: to || '—',
+        subject,
+        status,
+        error: error ?? null,
+        html: html ? redact(html) : null,
+      },
       select: { id: true },
     })
     // pruned on the way past rather than on a schedule: one delete every fifty
@@ -151,17 +167,19 @@ export async function sendMail({ to, subject, text, html, attachments }: Mail): 
   const built = await mailer()
   if (!built || !to) {
     console.info(`[mail skipped] ${to || 'no address'} — ${subject}`)
-    await record(to, subject, 'SKIPPED', to ? 'No SMTP settings' : 'No recipient address')
+    // the body is kept even for a skip — it is the only way to see what would
+    // have gone out once the settings are finally in place
+    await record(to, subject, 'SKIPPED', to ? 'No SMTP settings' : 'No recipient address', html)
     return { ok: false, skipped: true }
   }
   try {
     await built.transport.sendMail({ from: built.from, to, subject, text, html, attachments })
-    await record(to, subject, 'SENT')
+    await record(to, subject, 'SENT', undefined, html)
     return { ok: true, skipped: false }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[mail failed]', subject, err)
-    await record(to, subject, 'FAILED', message)
+    await record(to, subject, 'FAILED', message, html)
     return { ok: false, skipped: false, error: message }
   }
 }
