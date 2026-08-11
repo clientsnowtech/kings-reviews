@@ -37,11 +37,20 @@ function connection(): Conn {
   }
 }
 
-/** YYYY-MM-DD-HHmm: the names sort by age, and two runs a day cannot collide. */
+/**
+ * YYYY-MM-DD-HHmmss, so the names sort by age.
+ *
+ * Seconds because the Back up now button can be pressed twice in a minute, and
+ * a name without them had the second run writing over the first one's file
+ * mid-dump — then uploading both, under one name, to Drive.
+ */
 function stamp(): string {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
+  return [
+    `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+    `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`,
+  ].join('-')
 }
 
 /**
