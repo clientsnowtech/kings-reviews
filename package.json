@@ -22,6 +22,7 @@
     "mail:welcome": "tsx scripts/send-owner-welcome.ts",
     "mail:welcome-daily": "tsx scripts/send-daily-welcome.ts",
     "db:recount": "tsx scripts/recount-categories.ts",
+    "db:reassign-owners": "tsx scripts/reassign-business-owners.ts",
     "db:backup": "bash scripts/backup-db.sh",
     "mail:demo": "tsx scripts/send-demo-mails.ts"
   },
