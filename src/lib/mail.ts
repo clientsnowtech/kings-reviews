@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from 'nodemailer'
 import { db } from './db'
 import { loadMailConfig, type MailConfig } from './mail-settings'
+import { shell, p, small, button, linkLine, panel, bullets, stars, esc } from './mail-template'
 
 /**
  * Outbound mail. Everything here is optional: with no SMTP settings the calls
@@ -102,6 +103,12 @@ export type Mail = {
   to: string
   subject: string
   text: string
+  /**
+   * The branded body. Optional in the type so a caller can still send something
+   * plain, but every builder below writes one — and `text` is always sent with
+   * it, for the clients and the people who want mail without the decoration.
+   */
+  html?: string
   /** files to send along — the printable QR card is mailed this way */
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }
@@ -140,7 +147,7 @@ async function record(
 }
 
 /** Fire-and-forget: a failed notification is logged, never thrown. */
-export async function sendMail({ to, subject, text, attachments }: Mail): Promise<MailResult> {
+export async function sendMail({ to, subject, text, html, attachments }: Mail): Promise<MailResult> {
   const built = await mailer()
   if (!built || !to) {
     console.info(`[mail skipped] ${to || 'no address'} — ${subject}`)
@@ -148,7 +155,7 @@ export async function sendMail({ to, subject, text, attachments }: Mail): Promis
     return { ok: false, skipped: true }
   }
   try {
-    await built.transport.sendMail({ from: built.from, to, subject, text, attachments })
+    await built.transport.sendMail({ from: built.from, to, subject, text, html, attachments })
     await record(to, subject, 'SENT')
     return { ok: true, skipped: false }
   } catch (err) {
@@ -167,6 +174,7 @@ export function reviewPendingMail(args: {
   rating: number
   days: number
 }): Mail {
+  const url = `${site()}/business/dashboard/reviews?s=pending`
   return {
     to: args.to,
     subject: `New review for ${args.businessName} — waiting for you`,
@@ -174,8 +182,21 @@ export function reviewPendingMail(args: {
       `Someone left a ${args.rating}-star review for ${args.businessName}.`,
       '',
       `It stays hidden until you approve it, and publishes on its own after ${args.days} days if you do nothing.`,
-      `${site()}/business/dashboard/reviews?s=pending`,
+      url,
     ].join('\n'),
+    html: shell({
+      subject: `New review for ${args.businessName}`,
+      preheader: `A ${args.rating}-star review is waiting for your approval.`,
+      heading: 'A new review is waiting for you',
+      body: [
+        p(`Someone left a review for <strong>${esc(args.businessName)}</strong>.`),
+        p(stars(args.rating)),
+        panel(
+          `It stays hidden until you approve it, and publishes on its own after <strong>${args.days} days</strong> if you do nothing.`,
+        ),
+        button('Read the review', url),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -195,6 +216,20 @@ export function businessSubmittedMail(args: {
       'Nothing of it is public until someone approves it.',
       `${site()}/admin/businesses?status=PENDING`,
     ].join('\n'),
+    html: shell({
+      subject: `New listing waiting for approval — ${args.businessName}`,
+      preheader: `${args.businessName} (${args.city}) is in the approval queue.`,
+      heading: 'A listing is waiting for approval',
+      body: [
+        p(
+          `<strong>${esc(args.businessName)}</strong> (${esc(args.city)}) was listed by ${esc(
+            args.ownerEmail,
+          )}.`,
+        ),
+        panel('Nothing of it is public until someone approves it.'),
+        button('Open the queue', `${site()}/admin/businesses?status=PENDING`),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -216,6 +251,19 @@ export function businessDecisionMail(args: {
         'Next step: ask your customers for reviews from the dashboard.',
         `${site()}/business/dashboard`,
       ].join('\n'),
+      html: shell({
+        subject: `${args.businessName} is live on TrustIndex`,
+        preheader: 'Your listing is approved and public now.',
+        heading: `${args.businessName} is live`,
+        body: [
+          p('Your listing is approved and public now.'),
+          button('View your listing', `${site()}/company/${args.slug}`),
+          panel(
+            'Next step: ask your customers for reviews from the dashboard. Every review makes the page worth more to the people who find it.',
+          ),
+          linkLine('Dashboard:', `${site()}/business/dashboard`),
+        ].join('\n'),
+      }),
     }
   }
 
@@ -235,6 +283,18 @@ export function businessDecisionMail(args: {
       'Write to us if you think this is a mistake, or edit the listing and it will be looked at again.',
       `${site()}/business/dashboard/businesses`,
     ].join('\n'),
+    html: shell({
+      subject: `${args.businessName} — listing update`,
+      preheader: why,
+      heading: `${args.businessName} — listing update`,
+      body: [
+        p(why),
+        p(
+          'Write to us if you think this is a mistake, or edit the listing and it will be looked at again.',
+        ),
+        button('Open your listings', `${site()}/business/dashboard/businesses`),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -260,6 +320,23 @@ export function businessClaimMail(args: {
       'Sign in with this email to claim it — you can then edit the listing, reply to reviews and print a QR card that asks customers for one.',
       `${site()}/login`,
     ].join('\n'),
+    html: shell({
+      subject: `${args.businessName} is listed on TrustIndex — claim it`,
+      preheader: `${args.businessName} (${args.city}) is on TrustIndex with this address as its owner.`,
+      heading: `${args.businessName} is on TrustIndex`,
+      body: [
+        p(
+          `We added <strong>${esc(args.businessName)}</strong> (${esc(
+            args.city,
+          )}) to TrustIndex and put this address down as its owner.`,
+        ),
+        linkLine('The page:', `${site()}/company/${args.slug}`),
+        panel(
+          'Sign in with this email to claim it. You can then edit the listing, reply to reviews and print a QR card that asks customers for one.',
+        ),
+        button('Claim the listing', `${site()}/login`),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -311,6 +388,51 @@ export function ownerWelcomeMail(args: {
         ? 'If this was not meant for you, ignore this mail — nothing changes until the password is set.'
         : 'If this was not meant for you, write to us and we will take the listing down.',
     ].join('\n'),
+    html: shell({
+      subject: `${first.name} on TrustIndex`,
+      preheader: args.url
+        ? 'Set your password and the account is yours.'
+        : 'Log in with this address to manage your listing.',
+      heading:
+        more > 0 ? 'Your listings are on TrustIndex' : `${first.name} is on TrustIndex`,
+      body: [
+        p(
+          more > 0
+            ? `<strong>${esc(first.name)}</strong> (${esc(first.city)}) and ${more} other ${
+                more === 1 ? 'listing' : 'listings'
+              } are on TrustIndex with this address down as the owner.`
+            : `<strong>${esc(first.name)}</strong> (${esc(
+                first.city,
+              )}) is listed on TrustIndex with this address down as the owner.`,
+        ),
+        ...(args.url
+          ? [
+              p('Set your password and the account is yours:'),
+              button('Set your password', args.url),
+              small(`The link works for ${args.days} days.`),
+            ]
+          : [p('Log in with this address to manage it:'), button('Log in', `${site()}/login`)]),
+        panel(
+          'Once you are in you can edit the listing, reply to reviews and print a QR card that asks customers for one.',
+        ),
+        // Named rather than listed as bare URLs: an owner with six listings
+        // cannot tell six slugs apart, but knows their own shop names.
+        bullets(
+          args.businesses.map(
+            (b) =>
+              `<a href="${site()}/company/${esc(b.slug)}" style="color:#0e7a63;">${esc(
+                b.name,
+              )}</a> <span style="color:#5c6b66;">&middot; ${esc(b.city)}</span>`,
+          ),
+        ),
+        linkLine('Dashboard:', `${site()}/business/dashboard`),
+        small(
+          args.url
+            ? 'If this was not meant for you, ignore this mail — nothing changes until the password is set.'
+            : 'If this was not meant for you, write to us and we will take the listing down.',
+        ),
+      ].join('\n'),
+    }),
   }
 }
 
@@ -333,6 +455,23 @@ export function reviewCardMail(args: {
       '',
       'Print it at 3 cm or bigger and never stretch it — a squashed code stops scanning.',
     ].join('\n'),
+    html: shell({
+      subject: `Your review QR card — ${args.businessName}`,
+      preheader: 'The printable card is attached to this mail.',
+      heading: 'Your review QR card',
+      body: [
+        p(
+          `The card for <strong>${esc(
+            args.businessName,
+          )}</strong> is attached. Print it for the counter, the receipt or the packaging.`,
+        ),
+        p('A phone camera on the code opens your review page:'),
+        linkLine('Review page:', args.url),
+        panel(
+          'Print it at 3 cm or bigger and never stretch it — a squashed code stops scanning.',
+        ),
+      ].join('\n'),
+    }),
     attachments: [{ filename: args.filename, content: args.card, contentType: 'image/png' }],
   }
 }
@@ -360,5 +499,32 @@ export function reviewDecidedMail(args: {
           'You can rewrite it and submit again, and our team reviews rejections.',
           `${site()}/my/reviews`,
         ].join('\n'),
+    html: args.approved
+      ? shell({
+          subject: `Your review of ${args.businessName} is live`,
+          preheader: 'It is on the profile now — thanks for writing it.',
+          heading: 'Your review is live',
+          body: [
+            p(
+              `It is on the profile of <strong>${esc(
+                args.businessName,
+              )}</strong> now — thanks for writing it.`,
+            ),
+            button('See it on the profile', `${site()}/company/${args.slug}`),
+          ].join('\n'),
+        })
+      : shell({
+          subject: `Your review of ${args.businessName} was not published`,
+          preheader: `${args.businessName} did not publish your review.`,
+          heading: 'Your review was not published',
+          body: [
+            p(`<strong>${esc(args.businessName)}</strong> did not publish your review.`),
+            // The reason is the whole mail — a rejection without one reads as a
+            // review that silently disappeared.
+            panel(`<strong>Reason:</strong> ${esc(args.reason ?? 'No reason given.')}`),
+            p('You can rewrite it and submit again, and our team reviews rejections.'),
+            button('Your reviews', `${site()}/my/reviews`),
+          ].join('\n'),
+        }),
   }
 }
