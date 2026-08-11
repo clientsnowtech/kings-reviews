@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Search, PencilLine, Building2, ShieldCheck, Star, MapPin, BadgeCheck, ArrowRight, Quote, MessageSquareText, Flag, TrendingUp } from 'lucide-react'
 import { db } from '@/lib/db'
+import { listCities } from '@/lib/cities'
 import { BusinessCard } from '@/components/business-card'
 import { CategoryIcon } from '@/components/category-icon'
 import { NavSearch } from '@/components/nav-search'
@@ -95,13 +96,11 @@ export default async function Home() {
       db.category.count({ where: listed }),
       // the headline rating, averaged over the reviews that are actually public
       db.review.aggregate({ where: { status: 'LIVE' }, _avg: { rating: true } }),
-      db.business.findMany({
-        where: { status: 'LIVE' },
-        distinct: ['city'],
-        select: { city: true },
-        orderBy: { city: 'asc' },
-        take: 12,
-      }),
+      // Popular means busiest, not first in the alphabet. A distinct-by-city
+      // read ordered by name put Aamdi and Abohar on the front page and left
+      // off every city anyone actually searches for. listCities counts live
+      // listings per city and is memoised, so this costs nothing per load.
+      listCities(),
     ])
 
   // A directory with no reviews yet has no average to show — printing 0.0 out
@@ -279,9 +278,10 @@ export default async function Home() {
       <section className="mx-auto max-w-6xl px-4 py-16">
         <h2 className="mb-6 text-2xl font-bold tracking-tight">Popular cities</h2>
         <div className="flex flex-wrap gap-2">
-          {cities.map((c) => (
-            <Link key={c.city} href={`/search?q=${encodeURIComponent(c.city)}`} className="inline-flex items-center gap-1.5 rounded-full border bg-surface px-4 py-2 text-sm shadow-soft transition hover:border-brand hover:text-brand">
-              <MapPin size={14} /> {c.city}
+          {cities.slice(0, 12).map((c) => (
+            <Link key={c.slug} href={`/city/${c.slug}`} className="inline-flex items-center gap-1.5 rounded-full border bg-surface px-4 py-2 text-sm shadow-soft transition hover:border-brand hover:text-brand">
+              <MapPin size={14} /> {c.name}
+              <span className="text-xs text-muted">{c.count.toLocaleString('en-IN')}</span>
             </Link>
           ))}
         </div>
