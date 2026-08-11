@@ -363,9 +363,9 @@ export function businessClaimMail(args: {
  *
  * An admin-created account has no password, so the login form rejects it and
  * the register form says the email is taken. For those the set-password link is
- * the whole point of the mail — without it the owner cannot get in at all
- * unless the address happens to be a Google one. An owner who already has a
- * password gets the same mail minus the link.
+ * the whole point of the mail — without it the owner cannot get in at all. An
+ * owner who can already sign in, by password or through Google, gets the same
+ * mail minus the link.
  */
 export function ownerWelcomeMail(args: {
   to: string

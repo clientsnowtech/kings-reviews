@@ -45,8 +45,8 @@ export default async function AdminUsers({
   const pageCount = Math.ceil(total / PER_PAGE)
 
   // Owners of listings somebody else added: the account exists, but with no
-  // password there is no way into it unless the address happens to be a Google
-  // one. The welcome mail is the only thing that unlocks them.
+  // password and no Google sign-in behind it there is no way into it. The
+  // welcome mail is the only thing that unlocks them.
   const locked = await welcomeCandidates(true)
   const invited = await alreadyInvited(locked)
   const waiting = locked.length - invited.size
@@ -69,8 +69,8 @@ export default async function AdminUsers({
           <div className="mr-auto min-w-0">
             <p className="font-semibold">Owner welcome mail</p>
             <p className="mt-0.5 text-sm text-muted">
-              {locked.length} {locked.length === 1 ? 'owner has' : 'owners have'} no password yet —
-              they cannot log in at all unless their address is a Google one. The mail carries a
+              {locked.length} {locked.length === 1 ? 'owner has' : 'owners have'} no way in yet —
+              no password, and no Google sign-in behind the address. The mail carries a
               set-password link that works for 14 days.{' '}
               {invited.size > 0 && `${invited.size} already hold a live link, `}
               {waiting} still to be mailed.
@@ -92,7 +92,7 @@ export default async function AdminUsers({
             <SubmitButton
               pendingLabel="Sending…"
               title="Mail everyone again, including owners who already hold a link"
-              confirmMessage="Mail every passwordless owner again, including the ones already invited?"
+              confirmMessage="Mail every locked-out owner again, including the ones already invited?"
               className="rounded-lg border px-4 py-2 text-sm font-medium text-muted hover:bg-mint"
             >
               Resend to all

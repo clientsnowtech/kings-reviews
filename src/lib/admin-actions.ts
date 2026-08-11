@@ -72,6 +72,7 @@ export async function setBusinessStatus(formData: FormData) {
       slug: true,
       name: true,
       categoryId: true,
+      addedByAdmin: true,
       extraCategories: { select: { id: true } },
       owner: { select: { email: true } },
     },
@@ -87,8 +88,14 @@ export async function setBusinessStatus(formData: FormData) {
   // Going live is also the moment an admin-added owner first has something to
   // manage, so they get the welcome with its set-password link instead — it
   // carries the same "you are live" news plus the only way into the account.
+  //
+  // An owner who listed their own shop is told nothing of the sort: they signed
+  // up themselves and are already logged in, so a "set your password" mail
+  // about their own listing reads as somebody else's account.
   const welcomed =
-    status === 'LIVE' && (await welcomeOwnerOfBusiness(id, { force: true })) === 'sent'
+    status === 'LIVE' &&
+    biz.addedByAdmin &&
+    (await welcomeOwnerOfBusiness(id, { force: true })) === 'sent'
 
   if (biz.owner?.email && !welcomed) {
     await sendMail(
@@ -205,6 +212,7 @@ export async function adminCreateBusiness(formData: FormData) {
       contactPhone: str('contactPhone') || null,
       // added by an admin, but still not verified — verification has its own queue
       status,
+      addedByAdmin: true,
       extraCategories: { connect: extraIds(formData, categoryId).map((id) => ({ id })) },
     },
     select: { id: true },
@@ -506,6 +514,7 @@ export async function adminImportBusinesses(
       contactPhone: data.contactPhone || null,
       // listed by an admin, still not verified — verification has its own queue
       status: status as BusinessStatus,
+      addedByAdmin: true,
     })
     // createMany cannot touch a relation table, so the extras are linked after
     if (extraIdsForRow.length) withExtras.push({ id, extras: extraIdsForRow })
@@ -726,6 +735,7 @@ export async function bulkBusinessStatus(formData: FormData) {
     where: { id: { in: ids } },
     select: {
       categoryId: true,
+      addedByAdmin: true,
       extraCategories: { select: { id: true } },
       owner: { select: { email: true } },
     },
@@ -741,9 +751,12 @@ export async function bulkBusinessStatus(formData: FormData) {
 
   // Approving a screenful at a time is how a CSV import gets published, so the
   // welcome has to go from here too — deduped, because one owner can hold
-  // several of the listings in the selection.
+  // several of the listings in the selection, and only for the listings an
+  // admin put there. Owners who listed their own shop are not in this mail's
+  // audience at all.
   if (status === 'LIVE') {
-    for (const email of new Set(affected.map((b) => b.owner?.email).filter(Boolean) as string[])) {
+    const addressees = affected.filter((b) => b.addedByAdmin).map((b) => b.owner?.email)
+    for (const email of new Set(addressees.filter(Boolean) as string[])) {
       await welcomeOwner(email, { force: true })
     }
   }

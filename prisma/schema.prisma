@@ -22,6 +22,12 @@ model User {
   phone         String?   @unique
   phoneVerified DateTime?
   password      String?
+  // Last Google sign-in. Such an account never holds a password, so without
+  // this marker it looks exactly like an admin-created account nobody can open
+  // — and the welcome mail would push a set-password link at an owner who
+  // already logs in fine. Sessions are JWT, not adapter-backed (see auth.ts),
+  // so the Account table stays empty and cannot answer this.
+  googleAt      DateTime?
   image         String?
   role          Role      @default(USER)
   createdAt     DateTime  @default(now())
@@ -143,6 +149,11 @@ model Business {
 
   // the CSV run that created this row, so one bad import can be undone whole
   importId          String?
+  // Somebody other than the owner put this listing here — the admin form or a
+  // CSV import. Only these owners are told how to get into an account they
+  // never opened; an owner who listed their own shop already has a way in and
+  // wants nothing but the decision.
+  addedByAdmin      Boolean        @default(false)
   // scans of the printed QR card — otherwise the print is invisible to its owner
   qrScans           Int            @default(0)
 

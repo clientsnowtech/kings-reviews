@@ -75,12 +75,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name ?? undefined,
             image: user.image ?? undefined,
             emailVerified: new Date(),
+            // Stamped on every Google sign-in, so a passwordless account that
+            // gets in this way is never mistaken for one nobody can open.
+            googleAt: new Date(),
           },
           create: {
             email: user.email,
             name: user.name ?? null,
             image: user.image ?? null,
             emailVerified: new Date(),
+            googleAt: new Date(),
             role: 'USER',
           },
         })
