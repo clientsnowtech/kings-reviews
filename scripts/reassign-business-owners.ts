@@ -11,12 +11,14 @@
  * is missing or unusable. An owner account is minted per address — locked, as
  * the import would have left it, so the daily welcome mail is what opens it.
  *
- *   npm run db:reassign-owners -- --dry     # counts only, nothing written
- *   npm run db:reassign-owners              # do it
- *   npm run db:reassign-owners -- --limit=1000
+ *   npm run db:reassign-owners -- --dry       # counts only, nothing written
+ *   npm run db:reassign-owners                # do it
+ *   npm run db:reassign-owners -- --limit=20000
  *
  * Safe to re-run: a listing already under the right account is left alone, so
- * an interrupted run picks up where it stopped.
+ * an interrupted run picks up where it stopped. --limit counts the listings
+ * moved, not the rows read, so a run always gets that much further — capping
+ * rows read would make every run re-walk the same finished prefix and stop.
  *
  * Two kinds of listing never move — one an owner filed themselves (this only
  * ever looks at addedByAdmin rows), and one whose address belongs to an admin,
@@ -63,7 +65,7 @@ async function main() {
     const rows: Row[] = await db.business.findMany({
       where: { addedByAdmin: true },
       orderBy: { id: 'asc' },
-      take: Math.min(CHUNK, cap - tally.seen),
+      take: CHUNK,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: { id: true, email: true, contactEmail: true, ownerId: true },
     })
@@ -149,7 +151,7 @@ async function main() {
       )
     }
 
-    if (tally.seen >= cap) break
+    if (tally.moved >= cap) break
   }
 
   console.log(
