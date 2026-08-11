@@ -21,6 +21,7 @@
     "reviews:publish-due": "tsx scripts/publish-due-reviews.ts",
     "mail:welcome": "tsx scripts/send-owner-welcome.ts",
     "db:recount": "tsx scripts/recount-categories.ts",
+    "db:backup": "bash scripts/backup-db.sh",
     "mail:demo": "tsx scripts/send-demo-mails.ts"
   },
   "dependencies": {
