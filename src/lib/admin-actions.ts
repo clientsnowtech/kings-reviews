@@ -16,8 +16,12 @@ import {
 } from './business'
 import { forgetCities } from './cities'
 import { sendMail, businessDecisionMail, businessClaimMail } from './mail'
-import { alreadyInvited } from './password-token'
-import { welcomeOwner, welcomeOwnerOfBusiness, welcomeCandidates } from './owner-welcome'
+import {
+  welcomeOwner,
+  welcomeOwnerOfBusiness,
+  welcomeCandidates,
+  pendingWelcomeOwners,
+} from './owner-welcome'
 import { setActingOwner, clearActingOwner } from './impersonation'
 import { slugify, externalUrl } from './utils'
 import { businessSchema } from './validations'
@@ -936,9 +940,10 @@ export async function sendOwnerWelcomeEmails(formData: FormData) {
   const session = await requireAdmin()
   const resend = String(formData.get('resend')) === '1'
 
-  const owners = await welcomeCandidates(true)
-  const invited = resend ? new Set<string>() : await alreadyInvited(owners)
-  const waiting = owners.filter((email) => !invited.has(email))
+  // The queue is the accounts never mailed at all — the stamp outlives the
+  // link, so an owner welcomed a month ago stays out of it. A resend run wants
+  // them back, so it takes the unfiltered list.
+  const waiting = resend ? await welcomeCandidates(true) : await pendingWelcomeOwners()
   const batch = waiting.slice(0, WELCOME_BATCH)
 
   let sent = 0

@@ -2,6 +2,7 @@ import { db } from './db'
 import { sendMail, ownerWelcomeMail } from './mail'
 import {
   alreadyInvited,
+  PREFIX,
   issueSetPasswordToken,
   revokeSetPasswordToken,
   setPasswordUrl,
@@ -47,6 +48,7 @@ export async function welcomeOwner(
     select: {
       password: true,
       googleAt: true,
+      welcomeMailedAt: true,
       businesses: {
         where: { status: 'LIVE', addedByAdmin: true },
         orderBy: { createdAt: 'asc' },
@@ -66,6 +68,10 @@ export async function welcomeOwner(
   // them reads as a stranger's account, so they count as unlocked.
   const locked = owner.password === null && owner.googleAt === null
   if (!locked && lockedOnly) return 'skipped'
+  // Once is the whole promise of this mail. The link dies after a fortnight, so
+  // a live-token check alone would let the daily sweep come back round to the
+  // same owner a month later; the stamp is what makes it one-time for good.
+  if (!force && owner.welcomeMailedAt !== null) return 'skipped'
   if (locked && !force && (await alreadyInvited([email])).has(email)) return 'skipped'
 
   const token = locked ? await issueSetPasswordToken(email) : null
@@ -84,6 +90,10 @@ export async function welcomeOwner(
     if (locked) await revokeSetPasswordToken(email)
     return 'failed'
   }
+
+  // Only a mail the relay accepted counts — a failed send leaves no stamp, so
+  // the next run picks this owner up again.
+  await db.user.update({ where: { email }, data: { welcomeMailedAt: new Date() } })
   return 'sent'
 }
 
@@ -110,4 +120,66 @@ export async function welcomeCandidates(lockedOnly = true): Promise<string[]> {
     select: { email: true },
   })
   return owners.map((o) => o.email).filter(Boolean)
+}
+
+/**
+ * The owners still owed a welcome: locked out, listed by an admin, and never
+ * mailed before. Oldest account first, so whoever has waited longest hears
+ * from us first. Without a limit it returns the whole queue, which is what the
+ * admin panel counts; the cron passes the day's cap.
+ */
+export async function pendingWelcomeOwners(limit?: number): Promise<string[]> {
+  if (limit !== undefined && !(limit > 0)) return []
+
+  const owners = await db.user.findMany({
+    where: {
+      password: null,
+      googleAt: null,
+      welcomeMailedAt: null,
+      businesses: { some: { status: 'LIVE', addedByAdmin: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+    ...(limit === undefined ? {} : { take: limit }),
+    select: { email: true },
+  })
+  return owners.map((o) => o.email).filter(Boolean)
+}
+
+/**
+ * Stamps the owners who were already welcomed before the stamp column existed.
+ *
+ * The admin panel's button and the one-off script have been mailing people for
+ * months; without this the first cron run would greet every one of them a
+ * second time. Two records prove an invite went out — a set-password link in
+ * the token table, and a sent mail in the log — and either is enough.
+ *
+ * Cheap and idempotent, so the cron runs it before every sweep rather than
+ * trusting a migration that only ever ran once.
+ */
+export async function backfillWelcomeMailed(): Promise<number> {
+  const [logs, tokens] = await Promise.all([
+    db.emailLog.findMany({
+      where: { status: 'SENT', subject: { contains: 'set your password' } },
+      select: { to: true },
+      distinct: ['to'],
+    }),
+    db.verificationToken.findMany({
+      where: { identifier: { startsWith: PREFIX } },
+      select: { identifier: true },
+    }),
+  ])
+
+  const emails = [
+    ...new Set([
+      ...logs.map((l) => l.to),
+      ...tokens.map((t) => t.identifier.slice(PREFIX.length)),
+    ]),
+  ].filter(Boolean)
+  if (emails.length === 0) return 0
+
+  const { count } = await db.user.updateMany({
+    where: { email: { in: emails }, welcomeMailedAt: null },
+    data: { welcomeMailedAt: new Date() },
+  })
+  return count
 }

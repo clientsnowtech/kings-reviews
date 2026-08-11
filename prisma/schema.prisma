@@ -28,6 +28,11 @@ model User {
   // already logs in fine. Sessions are JWT, not adapter-backed (see auth.ts),
   // so the Account table stays empty and cannot answer this.
   googleAt      DateTime?
+  // When the set-password welcome went out. The daily cron works through the
+  // locked owners a few hundred at a time, and the link it mints dies after two
+  // weeks — without a permanent stamp the same owner would be mailed again the
+  // fortnight after, which is exactly the mail nobody wants twice.
+  welcomeMailedAt DateTime?
   image         String?
   role          Role      @default(USER)
   createdAt     DateTime  @default(now())

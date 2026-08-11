@@ -12,7 +12,8 @@ import { db } from './db'
  * Rows live in NextAuth's VerificationToken table (unused otherwise), and only
  * the hash of the token is stored: a leaked database still cannot log anyone in.
  */
-const PREFIX = 'set-password:'
+/** Exported so the one-time-mail backfill can read the same rows back out. */
+export const PREFIX = 'set-password:'
 
 /** Long enough that an owner who opens the mail a week later is not locked out. */
 export const SET_PASSWORD_TTL_DAYS = 14
