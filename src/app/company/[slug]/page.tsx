@@ -76,12 +76,28 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const sp = await searchParams
-  const b = await db.business.findFirst({ where: { slug, status: 'LIVE' } })
+  const b = await db.business.findFirst({
+    where: { slug, status: 'LIVE' },
+    include: { category: { select: { name: true } } },
+  })
   if (!b) return { title: 'Business not found', robots: { index: false, follow: false } }
 
   const avg = Number(b.ratingAvg)
-  const title = `${b.name} Reviews`
-  const description = `${b.name} in ${b.city}, ${b.state} has ${avg.toFixed(1)}★ from ${b.ratingCount} reviews. Read reviews or write your own on TrustIndex.`
+  // What people actually type is "best <trade> in <city>", so the title leads
+  // with that and names the business last. The category is what the listing is
+  // filed under; a row somehow left without one keeps the plain name.
+  const title = b.category
+    ? `Best ${b.category.name} in ${b.city}, ${b.state} - ${b.name}`
+    : `${b.name} Reviews`
+  // Same shape as the title — trade, then place, then the business — with the
+  // rating only when there is one. A listing nobody has reviewed yet was
+  // advertising "0.0★ from 0 reviews", which reads as a bad business rather
+  // than a new one, and that is the line Google prints under the link.
+  const trade = b.category ? `${b.category.name} in ${b.city}, ${b.state}` : `${b.city}, ${b.state}`
+  const description =
+    b.ratingCount > 0
+      ? `${b.name} — ${trade}. Rated ${avg.toFixed(1)}★ from ${b.ratingCount} customer ${b.ratingCount === 1 ? 'review' : 'reviews'}. Read honest reviews, ratings and contact details on TrustIndex India.`
+      : `${b.name} — ${trade}. Contact details, timings and customer ratings on TrustIndex India. Be the first to review it.`
 
   // Every paged, sorted or star-filtered view is the same business with its
   // reviews rearranged. One canonical copy gets indexed and the rest are
@@ -89,7 +105,10 @@ export async function generateMetadata({
   const filteredView = Boolean(sp.rating || sp.page || (sp.sort && sp.sort !== 'recent'))
 
   return {
-    title,
+    // absolute, so the root layout's "· TrustIndex India" is not appended: the
+    // title already carries the trade, the city and the business, and Google
+    // cuts it off around sixty characters — the site name is what it would eat.
+    title: { absolute: title },
     description,
     alternates: { canonical: `/company/${b.slug}` },
     robots: filteredView ? { index: false, follow: true } : { index: true, follow: true },
