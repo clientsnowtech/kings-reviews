@@ -1,4 +1,7 @@
 import type { ReactElement } from 'react'
+
+import { BrandMark } from '@/components/logo'
+import { BRAND_COLORS, BRAND_WORD_ONE, BRAND_WORD_TWO } from './brand'
 import { SITE_URL } from './seo'
 
 /**
@@ -16,15 +19,15 @@ import { SITE_URL } from './seo'
 export const OG_SIZE = { width: 1200, height: 630 }
 export const OG_CONTENT_TYPE = 'image/png'
 
-const BRAND = '#0e7a63'
-const BRAND_DARK = '#0a5b49'
-const INK = '#0f1b17'
-const MUTED = '#5c6b66'
-const CREAM = '#fbfaf3'
-const MINT = '#e7f5ef'
+const BRAND = BRAND_COLORS.green
+const BRAND_DARK = BRAND_COLORS.greenDark
+const INK = BRAND_COLORS.ink
+const MUTED = BRAND_COLORS.muted
+const CREAM = BRAND_COLORS.cream
+const MINT = BRAND_COLORS.mint
 // same gold as --star in globals.css and the badge
-const STAR = '#f5a623'
-const STAR_EMPTY = '#d7dde0'
+const STAR = BRAND_COLORS.star
+const STAR_EMPTY = BRAND_COLORS.starEmpty
 
 const STAR_PATH =
   'M12 2.4l2.94 6.03 6.66.94-4.83 4.66 1.15 6.6L12 17.5l-5.92 3.13 1.15-6.6L2.4 9.37l6.66-.94z'
@@ -91,25 +94,10 @@ export function ogCard({ eyebrow, title, subtitle, rating, chips = [] }: CardInp
       />
 
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <svg width="56" height="56" viewBox="0 0 32 32" fill="none">
-          <defs>
-            <linearGradient id="og-brand" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#12876d" />
-              <stop offset="1" stopColor={BRAND_DARK} />
-            </linearGradient>
-          </defs>
-          <rect width="32" height="32" rx="9" fill="url(#og-brand)" />
-          <path
-            d="M9.5 16.4l4 4 9-9.4"
-            stroke="#ffffff"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <BrandMark size={64} />
         <div style={{ display: 'flex', marginLeft: 18, fontSize: 34, fontWeight: 700 }}>
-          <span style={{ color: INK }}>Trust</span>
-          <span style={{ color: BRAND }}>Index</span>
+          <span style={{ color: INK }}>{BRAND_WORD_ONE}</span>
+          <span style={{ color: BRAND, marginLeft: 8 }}>{BRAND_WORD_TWO}</span>
         </div>
       </div>
 

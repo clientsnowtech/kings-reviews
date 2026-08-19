@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import QRCode from 'qrcode'
 import { brandedQrSvg, reviewPosterSvg } from './review-qr'
 
-const URL = 'https://www.trustindexindia.com/company/clients-now-technologies?review=ask'
+const URL = 'https://www.kingsreviews.com/company/clients-now-technologies?review=ask'
 
 /** Dark modules outside the three finder eyes and the centre hole. */
 function expectedDots(url: string): number {
@@ -42,8 +42,8 @@ test('the logo hole stays small enough for level H to recover', () => {
 
 test('the poster carries the brand, the name and the code', () => {
   const svg = reviewPosterSvg({ name: 'Clients Now Technologies', url: URL })
-  assert.match(svg, /TrustIndex/)
-  assert.match(svg, /INDIA/)
+  assert.match(svg, /Kings Reviews/)
+  assert.match(svg, /REVIEWS THAT BUILD TRUST/)
   assert.match(svg, /Clients Now Technologies/)
   assert.match(svg, /width="1" height="1"/)
   // the printed link is for typing by hand — the review flag only opens a dialog
@@ -58,6 +58,9 @@ test('a name with markup characters cannot break the svg', () => {
 test('two codes on one page get their own gradient ids', () => {
   const a = brandedQrSvg(URL, 'qr-one')
   const b = brandedQrSvg(URL, 'qr-two')
-  assert.match(a, /id="qr-one-mark"/)
-  assert.match(b, /id="qr-two-mark"/)
+  // the crest brings a family of gradients; every one of them is id-prefixed
+  assert.match(a, /id="qr-one-mark-field"/)
+  assert.match(a, /id="qr-one-mark-goldH"/)
+  assert.match(b, /id="qr-two-mark-field"/)
+  assert.ok(!b.includes('qr-one-mark'))
 })

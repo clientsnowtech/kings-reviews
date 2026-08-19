@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How TrustIndex India collects, uses, shares and protects personal data under the Digital Personal Data Protection Act, 2023.',
+    'How Kings Reviews collects, uses, shares and protects personal data under the Digital Personal Data Protection Act, 2023.',
 }
 
 /**

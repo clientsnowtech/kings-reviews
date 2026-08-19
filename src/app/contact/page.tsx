@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   title: 'Contact Us',
   description,
   keywords: [
-    'contact TrustIndex India',
-    'TrustIndex support',
+    'contact Kings Reviews',
+    'Kings Reviews support',
     'business listing help',
     `review platform contact ${OFFICE.city}`,
   ],

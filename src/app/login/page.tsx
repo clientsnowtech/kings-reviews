@@ -2,8 +2,8 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Star } from 'lucide-react'
 import { LoginPanel } from '@/components/login-panel'
+import { Logo } from '@/components/logo'
 
 function LoginInner() {
   const params = useSearchParams()
@@ -14,11 +14,8 @@ function LoginInner() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <div className="mb-6 flex items-center justify-center gap-2 font-bold">
-        <span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-white">
-          <Star size={18} fill="white" />
-        </span>
-        <span className="text-lg">Trust<span className="text-brand">Index</span></span>
+      <div className="mb-6 flex justify-center">
+        <Logo href={null} />
       </div>
 
       <div className="rounded-2xl border bg-surface p-8">
@@ -44,7 +41,7 @@ function LoginInner() {
 
       {process.env.NODE_ENV !== 'production' && (
         <p className="mt-4 text-center text-xs text-muted">
-          Demo login — owner@trustindex.in / password123
+          Demo login — owner@kingsreviews.com / password123
         </p>
       )}
     </div>

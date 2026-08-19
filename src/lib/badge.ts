@@ -6,6 +6,14 @@
  * no external fonts, no CSS variables, no classes.
  */
 
+import {
+  BRAND_COLORS,
+  BRAND_NAME,
+  brandMarkSvg,
+  emblemDefsSvg,
+  fieldGradientSvg,
+} from './brand'
+
 export type BadgeTier = 'rated' | 'silver' | 'gold' | 'diamond'
 export type BadgeVariant = 'card' | 'square' | 'seal' | 'tile' | 'strip' | 'banner' | 'micro'
 export type BadgeTheme = 'light' | 'dark'
@@ -27,14 +35,18 @@ export type TierDef = {
  * Highest first — tierFor() picks the first tier a business fully clears.
  * Thresholds are tuned for Indian local businesses: a few hundred reviews is
  * already a strong signal, so the old 1k/5k/10k ladder left everyone at base.
+ *
+ * Colours climb out of the logo: green at base, then a cool grey, then the
+ * logo's own gold, then near-black for Diamond — the only rung that outranks
+ * gold without fighting it.
  */
 export const TIERS: TierDef[] = [
-  { key: 'diamond', label: 'Diamond', min: 2000, minRating: 4.5, from: '#a5f3fc', to: '#0e7490', solid: '#0e7490', glyph: 'gem' },
-  { key: 'gold', label: 'Gold', min: 500, minRating: 4, from: '#fbbf24', to: '#b45309', solid: '#b45309', glyph: 'star' },
-  { key: 'silver', label: 'Silver', min: 100, minRating: 0, from: '#cbd5e1', to: '#64748b', solid: '#64748b', glyph: 'star' },
-  // base tier rides the site's brand teal. "Rated", not "Verified" — verification
+  { key: 'diamond', label: 'Diamond', min: 2000, minRating: 4.5, from: '#3f6459', to: BRAND_COLORS.ink, solid: BRAND_COLORS.ink, glyph: 'gem' },
+  { key: 'gold', label: 'Gold', min: 500, minRating: 4, from: BRAND_COLORS.goldLight, to: BRAND_COLORS.gold, solid: '#96701f', glyph: 'star' },
+  { key: 'silver', label: 'Silver', min: 100, minRating: 0, from: '#c3d1cb', to: '#5f736c', solid: BRAND_COLORS.muted, glyph: 'star' },
+  // base tier rides the logo's green. "Rated", not "Verified" — verification
   // is a separate signal and gets its own tick.
-  { key: 'rated', label: 'Rated', min: 0, minRating: 0, from: '#2bb391', to: '#0a5b49', solid: '#0e7a63', glyph: 'check' },
+  { key: 'rated', label: 'Rated', min: 0, minRating: 0, from: BRAND_COLORS.greenLight, to: BRAND_COLORS.greenDark, solid: BRAND_COLORS.green, glyph: 'check' },
 ]
 
 export function tierFor(reviewCount: number, ratingAvg: number): TierDef {
@@ -96,8 +108,14 @@ export function parseTheme(v: string | null | undefined): BadgeTheme {
 type ThemeDef = { bg: string; border: string; fg: string; muted: string; empty: string }
 
 const THEMES: Record<BadgeTheme, ThemeDef> = {
-  light: { bg: '#ffffff', border: '#e6ebe8', fg: '#0f1b17', muted: '#5c6b66', empty: '#d7dde0' },
-  dark: { bg: '#0f1b17', border: '#25342e', fg: '#ffffff', muted: '#9db3aa', empty: '#33433c' },
+  light: {
+    bg: '#ffffff',
+    border: BRAND_COLORS.border,
+    fg: BRAND_COLORS.ink,
+    muted: BRAND_COLORS.muted,
+    empty: BRAND_COLORS.starEmpty,
+  },
+  dark: { bg: BRAND_COLORS.ink, border: '#22362f', fg: '#ffffff', muted: '#9fb5ac', empty: '#33433c' },
 }
 
 /** Build credit, carried by every badge without touching the host page's markup. */
@@ -106,7 +124,7 @@ export const CREDIT_NAME = 'ClientsNow'
 
 // keep in step with --star in globals.css: a badge on someone's site and the
 // stars on ours show the same rating, so they cannot be two different colours
-const STAR_FILL = '#f5a623'
+const STAR_FILL = BRAND_COLORS.star
 const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 const STAR_PATH = 'M12 2l2.9 6.26 6.1.53-4.6 4.01 1.38 6.7L12 16.9 6.22 19.5 7.6 12.8 3 8.79l6.1-.53z'
 
@@ -144,13 +162,22 @@ function round(n: number, dp = 2): number {
   return Math.round(n * f) / f
 }
 
-/** TrustIndex mark — the same rounded tile + check used by the site logo. */
+/** The crest from logo.svg on its green field — the same mark as the favicon. */
 function brandMark(x: number, y: number, size: number): string {
-  return `<g transform="translate(${x} ${y}) scale(${round(size / 32, 4)})">
-    <rect width="32" height="32" rx="9" fill="url(#ti-brand)"/>
-    <rect width="32" height="16" rx="9" fill="#ffffff" opacity="0.10"/>
-    <path d="M9.5 16.4l4 4 9-9.4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  </g>`
+  return brandMarkSvg(x, y, size, 'kr')
+}
+
+/**
+ * Mark + wordmark as one lockup, centred on `cx`. Centred rather than pinned
+ * to a fixed x: "Kings Reviews" is a wider word than the badge was first laid
+ * out for, and a hard-coded start leaves it off-centre in every variant.
+ */
+function lockup(cx: number, top: number, markSize: number, fontSize: number, fill: string): string {
+  const gap = round(markSize * 0.34, 2)
+  const total = markSize + gap + textWidth(BRAND_NAME, fontSize, true)
+  const x = round(cx - total / 2, 2)
+  return `${brandMark(x, top, markSize)}
+    <text x="${round(x + markSize + gap, 2)}" y="${round(top + markSize / 2 + fontSize * 0.36, 2)}" font-size="${fontSize}" font-weight="700" fill="${fill}">${BRAND_NAME}</text>`
 }
 
 function glyph(kind: TierDef['glyph']): string {
@@ -166,10 +193,10 @@ function glyph(kind: TierDef['glyph']): string {
 
 const SPARKLE = 'M12 0l1.5 10.5L24 12l-10.5 1.5L12 24l-1.5-10.5L0 12l10.5-1.5z'
 
-/** Teal check disc — the verification mark, drawn from its own centre. */
+/** Green check disc — the verification mark, drawn from its own centre. */
 function tickDisc(cx: number, cy: number, r: number): string {
   return `<circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r + 1.4)}" fill="#ffffff"/>
-    <circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r)}" fill="#0e7a63"/>
+    <circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r)}" fill="${BRAND_COLORS.green}"/>
     <g transform="translate(${round(cx - r)} ${round(cy - r)}) scale(${round((r * 2) / 24, 4)})">
       <path d="M6 12.4l4 4 8-8.6" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
     </g>`
@@ -267,8 +294,7 @@ function frame(w: number, h: number, radius: number, theme: ThemeDef): string {
 function cardBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
   const { width: w, height: h } = BADGE_SIZES.card
   return `${frame(w, h, 18, theme)}
-    ${brandMark(66, 16, 18)}
-    <text x="90" y="30" font-size="13" font-weight="700" fill="${theme.fg}">TrustIndex</text>
+    ${lockup(110, 14, 26, 13, theme.fg)}
     ${medal(110, 78, 28, tier, d.verified)}
     <text x="110" y="128" text-anchor="middle" font-size="13" font-weight="600" fill="${theme.fg}">${esc(clip(d.name, 24))}</text>
     ${starRow(50, 140, 20, 5, avg, theme)}
@@ -282,8 +308,7 @@ function squareBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number):
   const { width: w, height: h } = BADGE_SIZES.square
   const cx = w / 2
   return `${frame(w, h, 20, theme)}
-    ${brandMark(12, 12, 15)}
-    <text x="33" y="24" font-size="11" font-weight="700" fill="${theme.fg}">TrustIndex</text>
+    ${lockup(90, 10, 22, 11, theme.fg)}
     ${medal(cx, 62, 22, tier, d.verified)}
     <text x="${cx}" y="108" text-anchor="middle" font-size="26" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
     ${starRow(cx - 41, 116, 14, 3, avg, theme)}
@@ -293,14 +318,16 @@ function squareBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number):
 
 /**
  * Round seal. No medal — the tier rides the ring instead, so the disc does not
- * fight the circular frame it sits in.
+ * fight the circular frame it sits in. Crown and wordmark stack at the top,
+ * where a circle has the most usable width.
  */
 function sealBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
   const { width: w } = BADGE_SIZES.seal
   const c = w / 2
   return `<circle cx="${c}" cy="${c}" r="${c - 0.5}" fill="${theme.bg}" stroke="${theme.border}"/>
     <circle cx="${c}" cy="${c}" r="${c - 8}" fill="none" stroke="url(#ti-tier)" stroke-width="3"/>
-    ${brandMark(c - 11, 26, 22)}
+    ${brandMark(c - 15, 22, 30)}
+    <text x="${c}" y="64" text-anchor="middle" font-size="8.5" font-weight="700" letter-spacing="1.4" fill="${theme.muted}">${BRAND_NAME.toUpperCase()}</text>
     <text x="${c}" y="92" text-anchor="middle" font-size="34" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
     ${starRow(c - 38.5, 100, 13, 3, avg, theme)}
     <text x="${c}" y="126" text-anchor="middle" font-size="10.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
@@ -309,22 +336,23 @@ function sealBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): s
 }
 
 /**
- * Smallest square. Drops the medal and reads the tier off a coloured footer
- * band, which doubles as the wordmark strip.
+ * Smallest square. Crown on top, then the rating; the tier reads off a
+ * coloured footer band, which doubles as the wordmark strip.
  */
 function tileBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
   const { width: w, height: h } = BADGE_SIZES.tile
   const cx = w / 2
   return `${frame(w, h, 16, theme)}
     <defs><clipPath id="ti-band"><rect width="${w}" height="${h}" rx="16"/></clipPath></defs>
-    ${starRow(cx - 38.5, 16, 13, 3, avg, theme)}
-    <text x="${cx}" y="68" text-anchor="middle" font-size="28" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
-    <text x="${cx}" y="86" text-anchor="middle" font-size="10" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
+    ${brandMark(cx - 12, 8, 24)}
+    ${starRow(cx - 38.5, 38, 13, 3, avg, theme)}
+    <text x="${cx}" y="76" text-anchor="middle" font-size="26" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
+    <text x="${cx}" y="90" text-anchor="middle" font-size="9.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews</text>
     <g clip-path="url(#ti-band)">
       <rect x="0" y="96" width="${w}" height="${h - 96}" fill="url(#ti-tier)"/>
       <rect x="0" y="96" width="${w}" height="${round((h - 96) / 2)}" fill="#ffffff" opacity="0.14"/>
     </g>
-    <text x="${cx}" y="112" text-anchor="middle" font-size="10.5" font-weight="700" fill="#ffffff">TrustIndex</text>
+    <text x="${cx}" y="112" text-anchor="middle" font-size="10.5" font-weight="700" fill="#ffffff">${BRAND_NAME}</text>
     <text x="${cx}" y="124" text-anchor="middle" font-size="7.5" letter-spacing="1.2" fill="#ffffff" opacity="0.85">${esc(tier.label.toUpperCase())}</text>
     ${d.verified ? tickDisc(w - 18, 22, 8) : ''}`
 }
@@ -335,9 +363,9 @@ function stripBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): 
     ${medal(44, 42, 23, tier, d.verified)}
     ${starRow(80, 22, 18, 4, avg, theme)}
     <text x="196" y="37" font-size="17" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
-    <text x="80" y="60" font-size="11.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on TrustIndex</text>
+    <text x="80" y="60" font-size="11.5" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on ${BRAND_NAME}</text>
     ${pill(w - 14 - pillWidth(tier, 9.5), 12, 20, tier, 9.5)}
-    ${brandMark(w - 36, h - 34, 22)}`
+    ${brandMark(w - 42, h - 38, 28)}`
 }
 
 /** Full-width footer bar — the strip with room for the business name. */
@@ -348,9 +376,9 @@ function bannerBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number):
     <text x="100" y="40" font-size="15" font-weight="700" fill="${theme.fg}">${esc(clip(d.name, 22))}</text>
     ${starRow(100, 52, 18, 4, avg, theme)}
     <text x="216" y="67" font-size="17" font-weight="700" fill="${theme.fg}">${avg.toFixed(1)}</text>
-    <text x="100" y="90" font-size="11" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on TrustIndex</text>
+    <text x="100" y="90" font-size="11" fill="${theme.muted}">${formatCount(d.ratingCount)} reviews on ${BRAND_NAME}</text>
     ${pill(w - 16 - pillWidth(tier, 10), 14, 22, tier, 10)}
-    ${brandMark(w - 40, h - 40, 24)}`
+    ${brandMark(w - 48, h - 46, 32)}`
 }
 
 /**
@@ -360,7 +388,7 @@ function bannerBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number):
  */
 function microLayout(d: BadgeInput, tier: TierDef, avg: number) {
   const starW = 14 * 5 + 3 * 4
-  const starX = 32
+  const starX = 34
   const avgText = avg.toFixed(1)
   const countText = `(${formatCount(d.ratingCount)})`
   const avgX = starX + starW + 6
@@ -382,10 +410,10 @@ function microLayout(d: BadgeInput, tier: TierDef, avg: number) {
 function microBody(d: BadgeInput, tier: TierDef, theme: ThemeDef, avg: number): string {
   const { height: h } = BADGE_SIZES.micro
   const m = microLayout(d, tier, avg)
-  // brand mark takes the left slot instead of a medal — at 34px tall the tier
+  // the crown takes the left slot instead of a medal — at 34px tall the tier
   // reads from its pill, and a second disc would just be noise
   return `${frame(m.width, h, 17, theme)}
-    ${brandMark(10, 10, 14)}
+    ${brandMark(6, 6, 22)}
     ${starRow(m.starX, 10, 14, 3, avg, theme)}
     <text x="${m.avgX}" y="21.5" font-size="12" font-weight="700" fill="${theme.fg}">${m.avgText}</text>
     <text x="${m.countX}" y="21.5" font-size="11" fill="${theme.muted}">${esc(m.countText)}</text>
@@ -398,7 +426,7 @@ export function badgeAltText(
   d: Pick<BadgeInput, 'name' | 'ratingAvg' | 'ratingCount'> & { verified?: boolean },
 ): string {
   const avg = Math.max(0, Math.min(5, d.ratingAvg))
-  return `${d.name} — ${avg.toFixed(1)} out of 5 from ${formatCount(d.ratingCount)} reviews on TrustIndex${d.verified ? ', verified business' : ''}`
+  return `${d.name} — ${avg.toFixed(1)} out of 5 from ${formatCount(d.ratingCount)} reviews on ${BRAND_NAME}${d.verified ? ', verified business' : ''}`
 }
 
 /** Short stable id suffix, so two inlined badges never share gradient/clip ids. */
@@ -448,9 +476,8 @@ export function renderBadgeSvg(d: BadgeInput): string {
   <desc>Badge by ${CREDIT_NAME} — ${CREDIT_URL}</desc>
   <metadata>${CREDIT_URL}</metadata>
   <defs>
-    <linearGradient id="ti-brand" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#12876d"/><stop offset="1" stop-color="#0a5b49"/>
-    </linearGradient>
+    ${fieldGradientSvg('kr')}
+    ${emblemDefsSvg('kr')}
     <linearGradient id="ti-tier" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="${tier.from}"/><stop offset="1" stop-color="${tier.to}"/>
     </linearGradient>
@@ -469,14 +496,17 @@ export function renderBadgeSvg(d: BadgeInput): string {
 </svg>`
 
   // namespace the ids — inlined badges on the same page must not fight
-  return svg.replace(/ti-(brand|tier|stars|gloss|sheen|band)/g, (m) => `${m}-${uid(d)}`)
+  return svg.replace(
+    /ti-(tier|stars|gloss|sheen|band)|kr-(field|gloss|goldH|goldV|goldR)/g,
+    (m) => `${m}-${uid(d)}`,
+  )
 }
 
 /** Placeholder shown when a slug does not resolve to a live business. */
 export function notFoundSvg(theme: BadgeTheme = 'light'): string {
   const t = THEMES[theme]
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="34" viewBox="0 0 220 34" role="img" aria-label="Business not listed on TrustIndex" font-family="${FONT}">
-  ${frame(220, 34, 17, t)}
-  <text x="110" y="21.5" text-anchor="middle" font-size="11.5" fill="${t.muted}">Business not listed on TrustIndex</text>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="264" height="34" viewBox="0 0 264 34" role="img" aria-label="Business not listed on ${BRAND_NAME}" font-family="${FONT}">
+  ${frame(264, 34, 17, t)}
+  <text x="132" y="21.5" text-anchor="middle" font-size="11.5" fill="${t.muted}">Business not listed on ${BRAND_NAME}</text>
 </svg>`
 }

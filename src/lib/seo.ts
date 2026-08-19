@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 
+import { BRAND_NAME } from './brand'
+
 /**
  * SEO helpers shared by the category pages.
  *
@@ -7,7 +9,7 @@ import type { Metadata } from 'next'
  * them absolute, so the host lives in exactly one place.
  */
 
-export const SITE_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+export const SITE_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? BRAND_NAME
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
 
 /** Trim to a length search engines actually render, without cutting mid-word. */

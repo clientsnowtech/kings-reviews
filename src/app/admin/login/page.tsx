@@ -75,7 +75,7 @@ function AdminLoginInner() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted">
-          Demo admin — admin@trustindex.in / password123
+          Demo admin — admin@kingsreviews.com / password123
         </p>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { stopActingAsOwner } from '@/lib/admin-actions'
 import { BusinessSidebar } from '@/components/business-sidebar'
 import { SubmitButton } from '@/components/submit-button'
 
-export const metadata: Metadata = { title: 'Business panel · TrustIndex' }
+export const metadata: Metadata = { title: 'Business panel · Kings Reviews' }
 export const dynamic = 'force-dynamic'
 
 export default async function BusinessLayout({

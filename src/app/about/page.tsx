@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   title: 'About Us',
   description,
   keywords: [
-    'about TrustIndex India',
+    'about Kings Reviews',
     'Indian business review platform',
     'verified customer reviews India',
     'independent review directory',

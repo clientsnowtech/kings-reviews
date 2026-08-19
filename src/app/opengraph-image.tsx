@@ -8,7 +8,7 @@ import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og'
  * own card still shares as something other than a bare link. Static, so it is
  * rendered once at build time.
  */
-export const alt = 'TrustIndex India — honest business reviews and ratings'
+export const alt = 'Kings Reviews — honest business reviews and ratings'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 

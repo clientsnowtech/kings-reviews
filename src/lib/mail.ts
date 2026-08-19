@@ -39,7 +39,7 @@ function fromEnv(): { config: MailConfig | null; url?: string } {
       // MAIL_FROM is already a whole "Name <address>" line, so it goes through
       // as the address with no display name of its own
       fromName: '',
-      fromEmail: MAIL_FROM ?? 'TrustIndex <no-reply@localhost>',
+      fromEmail: MAIL_FROM ?? 'Kings Reviews <no-reply@localhost>',
       enabled: true,
     },
   }
@@ -75,7 +75,7 @@ async function mailer(): Promise<Built> {
   } else if (env.url) {
     built = {
       transport: nodemailer.createTransport(env.url),
-      from: process.env.MAIL_FROM ?? 'TrustIndex <no-reply@localhost>',
+      from: process.env.MAIL_FROM ?? 'Kings Reviews <no-reply@localhost>',
     }
   } else if (env.config) {
     const c = env.config
@@ -261,7 +261,7 @@ export function businessDecisionMail(args: {
   if (args.status === 'LIVE') {
     return {
       to: args.to,
-      subject: `${args.businessName} is live on TrustIndex`,
+      subject: `${args.businessName} is live on Kings Reviews`,
       text: [
         'Your listing is approved and public now.',
         `${site()}/company/${args.slug}`,
@@ -270,7 +270,7 @@ export function businessDecisionMail(args: {
         `${site()}/business/dashboard`,
       ].join('\n'),
       html: shell({
-        subject: `${args.businessName} is live on TrustIndex`,
+        subject: `${args.businessName} is live on Kings Reviews`,
         preheader: 'Your listing is approved and public now.',
         heading: `${args.businessName} is live`,
         body: [
@@ -330,23 +330,23 @@ export function businessClaimMail(args: {
 }): Mail {
   return {
     to: args.to,
-    subject: `${args.businessName} is listed on TrustIndex — claim it`,
+    subject: `${args.businessName} is listed on Kings Reviews — claim it`,
     text: [
-      `We added ${args.businessName} (${args.city}) to TrustIndex and put this address down as its owner.`,
+      `We added ${args.businessName} (${args.city}) to Kings Reviews and put this address down as its owner.`,
       `${site()}/company/${args.slug}`,
       '',
       'Sign in with this email to claim it — you can then edit the listing, reply to reviews and print a QR card that asks customers for one.',
       `${site()}/login`,
     ].join('\n'),
     html: shell({
-      subject: `${args.businessName} is listed on TrustIndex — claim it`,
-      preheader: `${args.businessName} (${args.city}) is on TrustIndex with this address as its owner.`,
-      heading: `${args.businessName} is on TrustIndex`,
+      subject: `${args.businessName} is listed on Kings Reviews — claim it`,
+      preheader: `${args.businessName} (${args.city}) is on Kings Reviews with this address as its owner.`,
+      heading: `${args.businessName} is on Kings Reviews`,
       body: [
         p(
           `We added <strong>${esc(args.businessName)}</strong> (${esc(
             args.city,
-          )}) to TrustIndex and put this address down as its owner.`,
+          )}) to Kings Reviews and put this address down as its owner.`,
         ),
         linkLine('The page:', `${site()}/company/${args.slug}`),
         panel(
@@ -381,17 +381,17 @@ export function ownerWelcomeMail(args: {
     to: args.to,
     subject: args.url
       ? more > 0
-        ? 'Your listings on TrustIndex — set your password'
-        : `${first.name} is on TrustIndex — set your password`
+        ? 'Your listings on Kings Reviews — set your password'
+        : `${first.name} is on Kings Reviews — set your password`
       : more > 0
-        ? 'Your listings on TrustIndex'
-        : `${first.name} is on TrustIndex`,
+        ? 'Your listings on Kings Reviews'
+        : `${first.name} is on Kings Reviews`,
     text: [
       more > 0
         ? `${first.name} (${first.city}) and ${more} other ${
             more === 1 ? 'listing' : 'listings'
-          } are on TrustIndex with this address down as the owner.`
-        : `${first.name} (${first.city}) is listed on TrustIndex with this address down as the owner.`,
+          } are on Kings Reviews with this address down as the owner.`
+        : `${first.name} (${first.city}) is listed on Kings Reviews with this address down as the owner.`,
       '',
       ...(args.url
         ? ['Set your password here and the account is yours:', args.url, `The link works for ${args.days} days.`]
@@ -407,21 +407,21 @@ export function ownerWelcomeMail(args: {
         : 'If this was not meant for you, write to us and we will take the listing down.',
     ].join('\n'),
     html: shell({
-      subject: `${first.name} on TrustIndex`,
+      subject: `${first.name} on Kings Reviews`,
       preheader: args.url
         ? 'Set your password and the account is yours.'
         : 'Log in with this address to manage your listing.',
       heading:
-        more > 0 ? 'Your listings are on TrustIndex' : `${first.name} is on TrustIndex`,
+        more > 0 ? 'Your listings are on Kings Reviews' : `${first.name} is on Kings Reviews`,
       body: [
         p(
           more > 0
             ? `<strong>${esc(first.name)}</strong> (${esc(first.city)}) and ${more} other ${
                 more === 1 ? 'listing' : 'listings'
-              } are on TrustIndex with this address down as the owner.`
+              } are on Kings Reviews with this address down as the owner.`
             : `<strong>${esc(first.name)}</strong> (${esc(
                 first.city,
-              )}) is listed on TrustIndex with this address down as the owner.`,
+              )}) is listed on Kings Reviews with this address down as the owner.`,
         ),
         ...(args.url
           ? [
@@ -438,9 +438,9 @@ export function ownerWelcomeMail(args: {
         bullets(
           args.businesses.map(
             (b) =>
-              `<a href="${site()}/company/${esc(b.slug)}" style="color:#0e7a63;">${esc(
+              `<a href="${site()}/company/${esc(b.slug)}" style="color:#0c785d;">${esc(
                 b.name,
-              )}</a> <span style="color:#5c6b66;">&middot; ${esc(b.city)}</span>`,
+              )}</a> <span style="color:#5b6f67;">&middot; ${esc(b.city)}</span>`,
           ),
         ),
         linkLine('Dashboard:', `${site()}/business/dashboard`),

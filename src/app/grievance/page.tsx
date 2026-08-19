@@ -6,7 +6,7 @@ import { GRIEVANCE, LEGAL_ENTITY, OFFICE } from '@/lib/legal'
 export const metadata: Metadata = {
   title: 'Grievance Redressal',
   description:
-    'Contact the Grievance Officer of TrustIndex India for complaints about content, listings or personal data under the DPDP Act, 2023 and the IT Rules, 2021.',
+    'Contact the Grievance Officer of Kings Reviews for complaints about content, listings or personal data under the DPDP Act, 2023 and the IT Rules, 2021.',
 }
 
 /**

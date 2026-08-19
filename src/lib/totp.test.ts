@@ -75,10 +75,11 @@ test('parseBackupCodes shrugs off anything that is not our JSON', () => {
 
 test('the otpauth URI carries what an authenticator app reads', () => {
   const url = otpauthUrl({ secret: RFC_SECRET, label: 'asha@example.com' })
-  assert.ok(url.startsWith('otpauth://totp/TrustIndex%3Aasha%40example.com?'))
+  // the space in the brand name is percent-encoded in the label, not literal
+  assert.ok(url.startsWith('otpauth://totp/Kings%20Reviews%3Aasha%40example.com?'))
   const params = new URLSearchParams(url.split('?')[1])
   assert.equal(params.get('secret'), RFC_SECRET)
-  assert.equal(params.get('issuer'), 'TrustIndex')
+  assert.equal(params.get('issuer'), 'Kings Reviews')
   assert.equal(params.get('digits'), '6')
   assert.equal(params.get('period'), '30')
 })

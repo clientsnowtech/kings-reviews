@@ -96,7 +96,7 @@ export function verifyCode(secretB32: string, code: string, at = Date.now()): bo
 export function otpauthUrl({
   secret,
   label,
-  issuer = 'TrustIndex',
+  issuer = 'Kings Reviews',
 }: {
   secret: string
   label: string

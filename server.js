@@ -16,7 +16,7 @@ app
   .prepare()
   .then(() => {
     createServer((req, res) => handle(req, res)).listen(port, () => {
-      console.log(`TrustIndex ready on port ${port}`)
+      console.log(`Kings Reviews ready on port ${port}`)
     })
   })
   .catch((err) => {

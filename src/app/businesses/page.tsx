@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'All businesses — browse verified companies',
-  description: 'Browse and filter every business listed on TrustIndex by category, city and rating.',
+  description: 'Browse and filter every business listed on Kings Reviews by category, city and rating.',
 }
 
 const SORTS = {

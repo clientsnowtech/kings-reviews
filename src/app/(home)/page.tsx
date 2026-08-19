@@ -15,15 +15,15 @@ import { colorFrom, initials, formatDate } from '@/lib/utils'
 // staleness is invisible here and takes the query off the hot path.
 export const revalidate = 300
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Kings Reviews'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
 
-const TITLE = 'Business Reviews & Ratings in India | TrustIndex India'
+const TITLE = 'Business Reviews & Ratings in India | Kings Reviews'
 const DESCRIPTION =
   'Read honest customer reviews and ratings for Indian businesses — restaurants, hotels, shops and services. Compare, verify and write your own review free.'
 
 export const metadata: Metadata = {
-  // `absolute` opts out of the layout's "%s · TrustIndex India" template, which
+  // `absolute` opts out of the layout's "%s · Kings Reviews" template, which
   // would otherwise put the brand name in the title twice.
   title: { absolute: TITLE },
   description: DESCRIPTION,
@@ -253,7 +253,7 @@ export default async function Home() {
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="mb-8 flex items-center gap-2">
           <Star size={22} className="text-star" fill="var(--star)" />
-          <h2 className="text-3xl font-bold tracking-tight">Top rated on TrustIndex</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Top rated on Kings Reviews</h2>
         </div>
         <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topRated.map((b) => (
@@ -265,7 +265,7 @@ export default async function Home() {
       {/* ============ HOW IT WORKS ============ */}
       <section className="border-t bg-cream">
         <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="text-center text-3xl font-bold tracking-tight">How TrustIndex works</h2>
+          <h2 className="text-center text-3xl font-bold tracking-tight">How Kings Reviews works</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-3">
             <Step n="1" icon={<Search size={22} />} title="Discover" text="Search and browse verified businesses by category, city or name." />
             <Step n="2" icon={<PencilLine size={22} />} title="Review" text="Share your honest experience and rate out of 5 stars." />

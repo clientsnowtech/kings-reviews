@@ -14,6 +14,7 @@ import {
   type BadgeTheme,
   type BadgeVariant,
 } from '@/lib/badge'
+import { BRAND_COLORS, BRAND_NAME } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 export type StudioBusiness = {
@@ -120,12 +121,12 @@ export function BadgeStudio({
   const profileUrl = `${appUrl}/company/${b.slug}`
 
   const snippets = useMemo(() => {
-    const alt = `${b.name} reviews on TrustIndex`
+    const alt = `${b.name} reviews on ${BRAND_NAME}`
     const q = qs.replace(/&/g, '&amp;')
-    const credit = `<!-- TrustIndex badge · built by ${CREDIT_NAME} — ${CREDIT_URL} -->`
+    const credit = `<!-- ${BRAND_NAME} badge · built by ${CREDIT_NAME} — ${CREDIT_URL} -->`
     // visible, crawlable build credit — a hidden link would be discounted by search engines
     const creditLink = `  <a href="${CREDIT_URL}" target="_blank" rel="noopener"
-     style="display:block;margin-top:6px;font:400 11px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#5c6b66;text-decoration:none">Powered by ${CREDIT_NAME}</a>`
+     style="display:block;margin-top:6px;font:400 11px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:${BRAND_COLORS.muted};text-decoration:none">Powered by ${CREDIT_NAME}</a>`
     const open = `<div style="display:inline-block;max-width:100%;text-align:center">`
     // the width/height attrs reserve the box so the host page never shifts as
     // the badge loads; the CSS lets it shrink when the slot is narrower
@@ -325,7 +326,7 @@ ${creditLink}
           <CopyBox label="Image URL" note="for page builders & email footers" code={snippets.url} />
           <p className="flex items-start gap-2 rounded-xl border bg-mint/50 px-4 py-3 text-xs text-muted">
             <Info size={14} className="mt-0.5 shrink-0" />
-            The badge reads live from TrustIndex — rating, review count and tier update on their
+            The badge reads live from {BRAND_NAME} — rating, review count and tier update on their
             own, no need to re-paste the code. Paste the snippet as-is: the profile link and the
             “Powered by {CREDIT_NAME}” credit are part of the licence, and badges that strip them
             may be revoked.

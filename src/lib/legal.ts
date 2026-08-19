@@ -6,12 +6,14 @@
  * rather than each hard-coding a copy that drifts on the next edit.
  */
 
-export const LEGAL_ENTITY = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+import { BRAND_EMAIL, BRAND_NAME } from './brand'
+
+export const LEGAL_ENTITY = process.env.NEXT_PUBLIC_APP_NAME ?? BRAND_NAME
 
 /** Grievance Officer under IT Rules 2021 + contact for DPDPA data-principal requests. */
 export const GRIEVANCE = {
   name: 'Grievance Officer',
-  email: 'hello@trustindexindia.com',
+  email: BRAND_EMAIL,
   phone: '+91 89680 27027',
   /** tel: href — no spaces, country code included */
   phoneHref: '+918968027027',

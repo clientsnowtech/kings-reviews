@@ -15,13 +15,14 @@
  * message more when both parts say the same thing.
  */
 
-const BRAND = '#0e7a63'
-const BRAND_STRONG = '#0a5b49'
-const INK = '#0f1b17'
-const MUTED = '#5c6b66'
-const BORDER = '#e6ebe8'
-const MINT = '#e7f5ef'
-const CREAM = '#fbfaf3'
+const BRAND = '#0c785d'
+const BRAND_STRONG = '#0c624e'
+const GOLD = '#b6862d'
+const INK = '#0b1f19'
+const MUTED = '#5b6f67'
+const BORDER = '#e4ece8'
+const MINT = '#e8f4ef'
+const CREAM = '#fdfaf0'
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
@@ -96,7 +97,7 @@ export function bullets(items: string[]): string {
 /** Stars as characters, because an image of five stars is an image that got blocked. */
 export function stars(rating: number): string {
   const filled = Math.max(0, Math.min(5, Math.round(rating)))
-  return `<span style="font-size:18px;letter-spacing:2px;color:${BRAND};">${'&#9733;'.repeat(
+  return `<span style="font-size:18px;letter-spacing:2px;color:${GOLD};">${'&#9733;'.repeat(
     filled,
   )}<span style="color:${BORDER};">${'&#9733;'.repeat(5 - filled)}</span></span>`
 }
@@ -112,13 +113,15 @@ function header(): string {
   <tr>
     <td width="34" style="padding:0 10px 0 0;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="34"><tr>
-        <td align="center" bgcolor="${BRAND}" height="34" style="border-radius:9px;font-family:${FONT};font-size:19px;line-height:34px;color:#ffffff;font-weight:700;">&#10003;</td>
+        <!-- a K in gold on the brand green: the crest is an SVG, and mail
+             clients that do render SVG at all render it badly -->
+        <td align="center" bgcolor="${BRAND}" height="34" style="border-radius:9px;font-family:${FONT};font-size:18px;line-height:34px;color:${'#f1d574'};font-weight:700;">K</td>
       </tr></table>
     </td>
     <td style="font-family:${FONT};">
       <a href="${esc(home)}" style="text-decoration:none;">
-        <span style="font-size:19px;font-weight:700;color:${INK};letter-spacing:-0.2px;">Trust</span><span style="font-size:19px;font-weight:700;color:${BRAND};letter-spacing:-0.2px;">Index</span>
-        <span style="display:block;font-size:10px;font-weight:600;letter-spacing:3px;color:${MUTED};">INDIA</span>
+        <span style="font-size:19px;font-weight:700;color:${INK};letter-spacing:-0.2px;">Kings</span> <span style="font-size:19px;font-weight:700;color:${BRAND};letter-spacing:-0.2px;">Reviews</span>
+        <span style="display:block;font-size:10px;font-weight:600;letter-spacing:3px;color:${MUTED};">REVIEWS THAT BUILD TRUST</span>
       </a>
     </td>
   </tr>
@@ -129,14 +132,14 @@ function footer(): string {
   const home = site()
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td style="padding:20px 4px 0;font-family:${FONT};font-size:12px;line-height:20px;color:${MUTED};">
-    Sent by TrustIndex India${
+    Sent by Kings Reviews${
       home
         ? ` &middot; <a href="${esc(home)}" style="color:${MUTED};text-decoration:underline;">${esc(
             home.replace(/^https?:\/\//, ''),
           )}</a>`
         : ''
     }<br>
-    You are getting this because this address is on a TrustIndex listing or review.
+    You are getting this because this address is on a Kings Reviews listing or review.
   </td></tr>
 </table>`
 }

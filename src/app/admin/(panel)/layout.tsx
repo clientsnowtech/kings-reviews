@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/admin'
 import { db } from '@/lib/db'
 import { AdminSidebar } from '@/components/admin-sidebar'
 
-export const metadata: Metadata = { title: 'Admin · TrustIndex' }
+export const metadata: Metadata = { title: 'Admin · Kings Reviews' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLayout({

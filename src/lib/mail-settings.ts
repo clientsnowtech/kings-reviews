@@ -42,6 +42,9 @@ const PREFIX = 'v1'
 function key(): Buffer {
   const secret = process.env.AUTH_SECRET
   if (!secret) throw new Error('AUTH_SECRET is not set — refusing to store an SMTP key')
+  // The salt is frozen at the old brand's name on purpose: it derives the key
+  // that already encrypted every stored SMTP password, and renaming it would
+  // make all of them undecryptable.
   return scryptSync(secret, 'trustindex-mail-v1', 32)
 }
 
@@ -121,7 +124,7 @@ export async function mailSettingsView(): Promise<MailSettingsView> {
       host: BREVO_HOST,
       port: BREVO_PORT,
       username: '',
-      fromName: process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex',
+      fromName: process.env.NEXT_PUBLIC_APP_NAME ?? 'Kings Reviews',
       fromEmail: '',
       enabled: true,
       hasPassword: false,

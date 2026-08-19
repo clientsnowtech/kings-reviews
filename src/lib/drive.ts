@@ -24,7 +24,7 @@ const CONSENT_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 
-export const FOLDER_NAME = 'TrustIndex backups'
+export const FOLDER_NAME = 'Kings Reviews backups'
 
 function client(): { id: string; secret: string } {
   const id = process.env.AUTH_GOOGLE_ID

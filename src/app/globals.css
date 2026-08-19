@@ -1,21 +1,30 @@
 @import "tailwindcss";
 
+/* Kings Reviews palette — taken straight off the logo: three greens for the
+   crown's field and three golds for its metal. Nothing here is invented; a
+   colour that is not in logo.svg is a neutral derived from one that is. */
 :root {
   --background: #ffffff;
   --surface: #ffffff;
-  --foreground: #0f1b17;
-  --muted: #5c6b66;
-  --border: #e6ebe8;
-  --brand: #0e7a63;
-  --brand-strong: #0a5b49;
-  --mint: #e7f5ef;
-  --mint-2: #d6ede3;
-  --cream: #fbfaf3;
-  /* Gold: the colour a rating is read as everywhere else. The green star was
-     on-brand but scanned as "verified" rather than "rated". */
-  --star: #f5a623;
-  --star-empty: #d7dde0;
-  --danger: #d33a3a;
+  --foreground: #0b1f19;
+  --muted: #5b6f67;
+  --border: #e4ece8;
+  --brand: #0c785d;
+  --brand-strong: #0c624e;
+  --brand-light: #209273;
+  /* Gold is the accent, never the page: it earns attention precisely because
+     it is spent on the crown, the stars and one CTA per screen. */
+  --gold: #b6862d;
+  --gold-mid: #d5af33;
+  --gold-light: #f1d574;
+  --mint: #e8f4ef;
+  --mint-2: #d3e9df;
+  --cream: #fdfaf0;
+  /* Stars ride the logo's mid gold, so a rating on the site, on a badge and on
+     the printed QR card all read as the same mark. */
+  --star: #d5af33;
+  --star-empty: #dde2de;
+  --danger: #c53a2f;
 }
 
 @theme inline {
@@ -26,6 +35,10 @@
   --color-border: var(--border);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
+  --color-brand-light: var(--brand-light);
+  --color-gold: var(--gold);
+  --color-gold-mid: var(--gold-mid);
+  --color-gold-light: var(--gold-light);
   --color-mint: var(--mint);
   --color-mint-2: var(--mint-2);
   --color-cream: var(--cream);
@@ -83,17 +96,28 @@ body {
 
 /* premium soft shadow */
 .shadow-soft {
-  box-shadow: 0 1px 2px rgba(16, 40, 34, 0.04), 0 8px 24px rgba(16, 40, 34, 0.06);
+  box-shadow: 0 1px 2px rgba(11, 31, 25, 0.04), 0 8px 24px rgba(11, 31, 25, 0.06);
 }
 .shadow-float {
-  box-shadow: 0 6px 16px rgba(16, 40, 34, 0.08), 0 18px 48px rgba(16, 40, 34, 0.12);
+  box-shadow: 0 6px 16px rgba(11, 31, 25, 0.08), 0 18px 48px rgba(11, 31, 25, 0.12);
 }
 
-/* mint→cream hero wash */
+/* mint→cream hero wash, with a low gold bloom in the far corner — the crown's
+   metal showing through the field rather than a second green */
 .hero-wash {
   background:
+    radial-gradient(900px 420px at 92% -20%, rgba(241, 213, 116, 0.28) 0%, transparent 60%),
     radial-gradient(1200px 500px at 85% -10%, var(--mint-2) 0%, transparent 55%),
     linear-gradient(180deg, var(--mint) 0%, var(--cream) 60%, #ffffff 100%);
+}
+
+/* Gold hairline for anything that should read as "crown", not "chrome" —
+   the wordmark rule, a seal edge, a premium CTA border. */
+.gold-edge {
+  border-color: color-mix(in srgb, var(--gold-mid) 55%, #ffffff);
+}
+.gold-fill {
+  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-mid) 45%, var(--gold) 100%);
 }
 
 @keyframes floaty {

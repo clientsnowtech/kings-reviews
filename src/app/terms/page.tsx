@@ -6,7 +6,7 @@ import { GRIEVANCE, LEGAL_ENTITY } from '@/lib/legal'
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description:
-    'The rules for using TrustIndex India — posting reviews, running a listing, content removal, and your rights under the DPDP Act, 2023.',
+    'The rules for using Kings Reviews — posting reviews, running a listing, content removal, and your rights under the DPDP Act, 2023.',
 }
 
 export default function TermsPage() {
@@ -24,7 +24,7 @@ export default function TermsPage() {
         </>
       }
     >
-      <Section title="1. About TrustIndex">
+      <Section title="1. About Kings Reviews">
         <p>
           {LEGAL_ENTITY} operates an online directory where consumers read and publish reviews of
           businesses in India. The service is free to use for consumers.

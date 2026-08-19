@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Star } from 'lucide-react'
 import { emailForSetPasswordToken } from '@/lib/password-token'
 import { SetPasswordForm } from '@/components/set-password-form'
+import { Logo } from '@/components/logo'
 
 // The token is the credential — nothing here may be cached or indexed.
 export const dynamic = 'force-dynamic'
@@ -22,13 +22,8 @@ export default async function SetPasswordPage({
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <div className="mb-6 flex items-center justify-center gap-2 font-bold">
-        <span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-white">
-          <Star size={18} fill="white" />
-        </span>
-        <span className="text-lg">
-          Trust<span className="text-brand">Index</span>
-        </span>
+      <div className="mb-6 flex justify-center">
+        <Logo href={null} />
       </div>
 
       <div className="rounded-2xl border bg-surface p-8">

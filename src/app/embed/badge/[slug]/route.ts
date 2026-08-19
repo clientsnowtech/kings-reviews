@@ -14,6 +14,7 @@ import {
   parseVariant,
   renderBadgeSvg,
 } from '@/lib/badge'
+import { BRAND_COLORS, BRAND_NAME } from '@/lib/brand'
 
 /**
  * Frameable badge:
@@ -57,8 +58,8 @@ function page(inner: string, title: string) {
   /* the host sizes the iframe; the artwork scales to fill it off its viewBox */
   a{display:block;line-height:0;text-decoration:none;transition:transform .15s ease,filter .15s ease}
   svg{display:block;width:100%;height:auto}
-  a:hover{transform:translateY(-2px);filter:drop-shadow(0 6px 16px rgba(16,40,34,.16))}
-  a:focus-visible{outline:2px solid #0e7a63;outline-offset:3px;border-radius:18px}
+  a:hover{transform:translateY(-2px);filter:drop-shadow(0 6px 16px rgba(11,31,25,.16))}
+  a:focus-visible{outline:2px solid ${BRAND_COLORS.green};outline-offset:3px;border-radius:18px}
 </style>
 </head>
 <body>${inner}</body>
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   // a revoked badge answers exactly like an unknown one — no signal to scrape
   if (!business || !business.badgeEnabled) {
-    return html(page(notFoundSvg(theme), 'Not on TrustIndex'), 404, 'public, max-age=60')
+    return html(page(notFoundSvg(theme), `Not on ${BRAND_NAME}`), 404, 'public, max-age=60')
   }
 
   recordBadgeView(business.id, req.headers.get('referer'))

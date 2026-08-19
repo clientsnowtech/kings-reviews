@@ -11,7 +11,7 @@ import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og'
  * That matters here: the production host builds on a single worker and could
  * not afford a card per listing up front.
  */
-export const alt = 'Business reviews on TrustIndex India'
+export const alt = 'Business reviews on Kings Reviews'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 export const revalidate = 86400
@@ -36,7 +36,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     return new ImageResponse(
       ogCard({
         title: 'Business reviews in India',
-        subtitle: 'Find and rate businesses on TrustIndex India.',
+        subtitle: 'Find and rate businesses on Kings Reviews.',
       }),
       { ...size },
     )

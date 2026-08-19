@@ -81,7 +81,7 @@ export async function sendTestEmail(formData: FormData) {
 
   const result = await sendMail({
     to,
-    subject: 'TrustIndex test email',
+    subject: 'Kings Reviews test email',
     text: [
       'This is a test from Admin → Communication.',
       '',

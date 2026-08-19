@@ -6,7 +6,7 @@ import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og'
  * Share card for a category listing. Cached for a day like the company card —
  * the counts move slowly and the host cannot spare a render per crawl.
  */
-export const alt = 'Category listings on TrustIndex India'
+export const alt = 'Category listings on Kings Reviews'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 export const revalidate = 86400

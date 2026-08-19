@@ -1,5 +1,5 @@
 {
-  "name": "trustindex",
+  "name": "kings-reviews",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,7 @@
     "reviews:publish-due": "tsx scripts/publish-due-reviews.ts",
     "mail:welcome": "tsx scripts/send-owner-welcome.ts",
     "mail:welcome-daily": "tsx scripts/send-daily-welcome.ts",
+    "brand:assets": "tsx scripts/gen-brand-assets.ts",
     "db:recount": "tsx scripts/recount-categories.ts",
     "db:reassign-owners": "tsx scripts/reassign-business-owners.ts",
     "db:backup": "bash scripts/backup-db.sh",

@@ -2,11 +2,11 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
-import { Star } from 'lucide-react'
 import { registerUser, type ActionState } from '@/lib/actions'
 import { PasswordField } from '@/components/password-field'
 import { GoogleButton } from '@/components/google-button'
 import { rememberEmail } from '@/lib/prefs'
+import { Logo } from '@/components/logo'
 
 const initial: ActionState = {}
 
@@ -23,16 +23,13 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <div className="mb-6 flex items-center justify-center gap-2 font-bold">
-        <span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-white">
-          <Star size={18} fill="white" />
-        </span>
-        <span className="text-lg">Trust<span className="text-brand">Index</span></span>
+      <div className="mb-6 flex justify-center">
+        <Logo href={null} />
       </div>
 
       <div className="rounded-2xl border bg-surface p-8">
         <h1 className="text-2xl font-bold">Create your account</h1>
-        <p className="mt-1 text-sm text-muted">Join TrustIndex to review businesses across India.</p>
+        <p className="mt-1 text-sm text-muted">Join Kings Reviews to review businesses across India.</p>
 
         <div className="mt-6">
           <GoogleButton label="Sign up with Google" />

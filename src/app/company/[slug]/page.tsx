@@ -96,8 +96,8 @@ export async function generateMetadata({
   const trade = b.category ? `${b.category.name} in ${b.city}, ${b.state}` : `${b.city}, ${b.state}`
   const description =
     b.ratingCount > 0
-      ? `${b.name} — ${trade}. Rated ${avg.toFixed(1)}★ from ${b.ratingCount} customer ${b.ratingCount === 1 ? 'review' : 'reviews'}. Read honest reviews, ratings and contact details on TrustIndex India.`
-      : `${b.name} — ${trade}. Contact details, timings and customer ratings on TrustIndex India. Be the first to review it.`
+      ? `${b.name} — ${trade}. Rated ${avg.toFixed(1)}★ from ${b.ratingCount} customer ${b.ratingCount === 1 ? 'review' : 'reviews'}. Read honest reviews, ratings and contact details on Kings Reviews.`
+      : `${b.name} — ${trade}. Contact details, timings and customer ratings on Kings Reviews. Be the first to review it.`
 
   // Every paged, sorted or star-filtered view is the same business with its
   // reviews rearranged. One canonical copy gets indexed and the rest are
@@ -105,7 +105,7 @@ export async function generateMetadata({
   const filteredView = Boolean(sp.rating || sp.page || (sp.sort && sp.sort !== 'recent'))
 
   return {
-    // absolute, so the root layout's "· TrustIndex India" is not appended: the
+    // absolute, so the root layout's "· Kings Reviews" is not appended: the
     // title already carries the trade, the city and the business, and Google
     // cuts it off around sixty characters — the site name is what it would eat.
     title: { absolute: title },

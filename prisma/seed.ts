@@ -306,15 +306,15 @@ async function main() {
   const passwordHash = await bcrypt.hash('password123', 10)
 
   const owner = await db.user.upsert({
-    where: { email: 'owner@trustindex.in' },
+    where: { email: 'owner@kingsreviews.com' },
     update: {},
-    create: { name: 'Demo Owner', email: 'owner@trustindex.in', password: passwordHash, role: 'BUSINESS', emailVerified: new Date() },
+    create: { name: 'Demo Owner', email: 'owner@kingsreviews.com', password: passwordHash, role: 'BUSINESS', emailVerified: new Date() },
   })
 
   await db.user.upsert({
-    where: { email: 'admin@trustindex.in' },
+    where: { email: 'admin@kingsreviews.com' },
     update: { role: 'ADMIN' },
-    create: { name: 'Admin', email: 'admin@trustindex.in', password: passwordHash, role: 'ADMIN', emailVerified: new Date() },
+    create: { name: 'Admin', email: 'admin@kingsreviews.com', password: passwordHash, role: 'ADMIN', emailVerified: new Date() },
   })
 
   // categories — flat now; the demo taxonomy's groupings survive only as names

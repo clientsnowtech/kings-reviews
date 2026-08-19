@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Kings Reviews'
 
 /**
  * Web app manifest — what Android uses when someone adds the site to their home
@@ -13,13 +13,13 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${APP_NAME} — business reviews and ratings`,
-    short_name: 'TrustIndex',
+    short_name: 'Kings',
     description:
       'Discover and review businesses across India. Honest customer ratings and reviews for restaurants, hotels, services and more.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#0e7a63',
+    theme_color: '#0c785d',
     lang: 'en-IN',
     categories: ['business', 'shopping', 'lifestyle'],
     icons: [

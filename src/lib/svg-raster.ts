@@ -42,7 +42,7 @@ function xml(s: string): string {
 async function bundledFonts(): Promise<void> {
   if (!FONT_DIR) return
 
-  const dir = join(tmpdir(), 'trustindex-fontconfig')
+  const dir = join(tmpdir(), 'kings-reviews-fontconfig')
   const cache = join(dir, 'cache')
   await mkdir(cache, { recursive: true })
 

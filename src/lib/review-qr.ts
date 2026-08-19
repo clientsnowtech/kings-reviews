@@ -1,12 +1,14 @@
 import QRCode from 'qrcode'
 
+import { BRAND_COLORS, BRAND_NAME, BRAND_TAGLINE, brandMarkSvg, emblemDefsSvg, emblemSvg, fieldGradientSvg } from './brand'
+
 /**
  * Branded review QR.
  *
  * The default `QRCode.toString()` output is a black grid with no owner in it —
  * printed at a counter it could be anyone's code, and nothing says the scan
  * leads to a review. So the modules are drawn here instead: brand teal, rounded
- * eyes, the TrustIndex tile knocked into the middle, and a print-ready card
+ * eyes, the Kings Reviews tile knocked into the middle, and a print-ready card
  * around it that names the business and says what the scan does.
  *
  * The mark in the centre is why every code is generated at error-correction
@@ -14,12 +16,12 @@ import QRCode from 'qrcode'
  * about 6% of it.
  */
 
-const BRAND = '#0e7a63'
-const BRAND_DARK = '#0a5b49'
-const MINT = '#e7f5ef'
-const BORDER = '#dfe6e3'
-const INK = '#0f172a'
-const MUTED = '#64748b'
+const BRAND = BRAND_COLORS.green
+const BRAND_DARK = BRAND_COLORS.greenDark
+const MINT = BRAND_COLORS.mint
+const BORDER = '#dde7e2'
+const INK = BRAND_COLORS.ink
+const MUTED = BRAND_COLORS.muted
 // 'Noto Sans' leads because that is what the server has: a browser skips past it
 // to system-ui, while the mail rasteriser finds it in `assets/fonts` and stops
 // there. Both draw the same card; only the server has no second choice.
@@ -49,11 +51,7 @@ function round(n: number, dp = 2): number {
 
 /** The rounded tile + check of the site logo, drawn from its top-left corner. */
 function brandTile(x: number, y: number, size: number, id: string): string {
-  return `<g transform="translate(${round(x)} ${round(y)}) scale(${round(size / 32, 4)})">
-    <rect width="32" height="32" rx="9" fill="url(#${id})"/>
-    <rect width="32" height="16" rx="9" fill="#ffffff" opacity="0.10"/>
-    <path d="M9.5 16.4l4 4 9-9.4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  </g>`
+  return brandMarkSvg(round(x), round(y), round(size), id)
 }
 
 /** One finder eye: rounded frame plus rounded pupil, drawn in module units. */
@@ -114,9 +112,7 @@ function qrArt(url: string, id: string): QrArt {
 
   return {
     span: size + MARGIN * 2,
-    defs: `<linearGradient id="${id}-mark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#12876d"/><stop offset="1" stop-color="${BRAND_DARK}"/>
-    </linearGradient>`,
+    defs: `${fieldGradientSvg(`${id}-mark`)}${emblemDefsSvg(`${id}-mark`)}`,
     body: `<g fill="${BRAND}">${dots}</g>${eyes}${centre}`,
   }
 }
@@ -124,7 +120,7 @@ function qrArt(url: string, id: string): QrArt {
 /** The code on its own — used for the on-screen preview and the plain download. */
 export function brandedQrSvg(url: string, id = 'tiqr'): string {
   const art = qrArt(url, id)
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${art.span * 8}" height="${art.span * 8}" viewBox="0 0 ${art.span} ${art.span}" role="img" aria-label="QR code to review this business on TrustIndex India">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${art.span * 8}" height="${art.span * 8}" viewBox="0 0 ${art.span} ${art.span}" role="img" aria-label="QR code to review this business on Kings Reviews">
   <defs>${art.defs}</defs>
   <rect width="${art.span}" height="${art.span}" fill="#ffffff"/>
   ${art.body}
@@ -172,11 +168,13 @@ export function reviewPosterSvg({
   const shownUrl = clip(url.replace(/^https?:\/\//, '').replace(/\?.*$/, ''), 58)
   const shownName = clip(name, 42)
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Review ${esc(name)} on TrustIndex India" font-family="${FONT}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Review ${esc(name)} on Kings Reviews" font-family="${FONT}">
   <defs>
     ${art.defs}
-    <linearGradient id="${id}-band" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#12876d"/><stop offset="1" stop-color="${BRAND_DARK}"/>
+    <!-- user space, not bounding box: the band is drawn as two rects and a
+         per-rect gradient would put a seam between them -->
+    <linearGradient id="${id}-band" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="150">
+      <stop offset="0" stop-color="${BRAND_COLORS.greenLight}"/><stop offset="1" stop-color="${BRAND_DARK}"/>
     </linearGradient>
   </defs>
 
@@ -186,10 +184,11 @@ export function reviewPosterSvg({
   <g>
     <rect width="${W}" height="150" rx="34" fill="url(#${id}-band)"/>
     <rect y="110" width="${W}" height="40" fill="url(#${id}-band)"/>
+    <!-- the crest on white, the way the logo itself sets it -->
     <rect x="46" y="43" width="52" height="52" rx="15" fill="#ffffff"/>
-    <path d="M61 70.5l7.5 7.5 16.5-17" fill="none" stroke="${BRAND}" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="116" y="72" font-size="28" font-weight="700" fill="#ffffff">TrustIndex</text>
-    <text x="118" y="92" font-size="11" font-weight="600" letter-spacing="6" fill="#ffffff" opacity="0.75">INDIA</text>
+    ${emblemSvg(52, 49, 40, `${id}-mark`)}
+    <text x="116" y="72" font-size="28" font-weight="700" fill="#ffffff">${BRAND_NAME}</text>
+    <text x="118" y="92" font-size="10" font-weight="600" letter-spacing="3" fill="#ffffff" opacity="0.75">${BRAND_TAGLINE.toUpperCase()}</text>
     ${
       logo
         ? // the owner's own mark, opposite ours — the card reads as theirs,

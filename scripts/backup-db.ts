@@ -103,14 +103,15 @@ async function dump(conn: Conn, target: string): Promise<void> {
 async function localBackups(): Promise<string[]> {
   const names = await readdir(OUT).catch(() => [] as string[])
   return names
-    .filter((n) => n.startsWith('trustindex-') && n.endsWith('.sql.gz'))
+    // both prefixes: dumps taken before the rename are still ours to prune
+    .filter((n) => /^(kingsreviews|trustindex)-/.test(n) && n.endsWith('.sql.gz'))
     .sort()
     .reverse()
 }
 
 async function main() {
   const conn = connection()
-  const fileName = `trustindex-${stamp()}.sql.gz`
+  const fileName = `kingsreviews-${stamp()}.sql.gz`
   const finalPath = path.join(OUT, fileName)
   // Written as .part and renamed only once gzip has returned, so a run that
   // dies halfway never leaves something that looks like a good backup.

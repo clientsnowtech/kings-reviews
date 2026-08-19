@@ -13,6 +13,7 @@ import {
   tierFor,
   type BadgeInput,
 } from './badge'
+import { BRAND_COLORS } from './brand'
 
 const base: BadgeInput = {
   name: 'Sharma Electronics',
@@ -54,7 +55,7 @@ test('base tier never claims verification', () => {
 
 test('verified listings get a tick and say so in alt text', () => {
   const svg = renderBadgeSvg({ ...base, verified: true })
-  assert.ok(svg.includes('#0e7a63'), 'tick disc uses the brand teal')
+  assert.ok(svg.includes(BRAND_COLORS.green), 'tick disc uses the brand green')
   assert.ok(badgeAltText({ ...base, verified: true }).includes('verified business'))
   assert.ok(!badgeAltText(base).includes('verified'))
 })

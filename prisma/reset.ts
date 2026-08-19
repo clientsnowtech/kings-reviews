@@ -21,7 +21,15 @@ async function main() {
   await db.auditLog.deleteMany({})
   // demo accounts only (seeded owner/admin/reviewers)
   await db.user.deleteMany({
-    where: { OR: [{ email: { endsWith: '@example.in' } }, { email: { endsWith: '@trustindex.in' } }] },
+    // '@trustindex.in' is still listed: demo accounts seeded before the rename
+    // are ours to clear too, and they will not match the new domain
+    where: {
+      OR: [
+        { email: { endsWith: '@example.in' } },
+        { email: { endsWith: '@kingsreviews.com' } },
+        { email: { endsWith: '@trustindex.in' } },
+      ],
+    },
   })
   console.log('Demo data removed.')
 }

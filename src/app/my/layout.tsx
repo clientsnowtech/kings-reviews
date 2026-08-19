@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import { initials, colorFrom } from '@/lib/utils'
 import { AccountTabs } from '@/components/account-tabs'
 
-export const metadata: Metadata = { title: 'My account · TrustIndex' }
+export const metadata: Metadata = { title: 'My account · Kings Reviews' }
 export const dynamic = 'force-dynamic'
 
 export default async function MyLayout({ children }: { children: React.ReactNode }) {

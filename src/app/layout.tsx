@@ -8,11 +8,12 @@ import { Logo } from '@/components/logo'
 import { CookieConsent, CookieSettingsButton } from '@/components/cookie-consent'
 import { Analytics } from '@/components/analytics'
 import { CREDIT_NAME, CREDIT_URL } from '@/lib/badge'
+import { BRAND_NAME } from '@/lib/brand'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'TrustIndex India'
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? BRAND_NAME
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
 
 export const metadata: Metadata = {
@@ -63,7 +64,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 The brand blurb keeps full width; only the link lists pair up. */}
             <div className="grid grid-cols-2 gap-8 lg:grid-cols-5">
               <div className="col-span-2 sm:col-span-1">
-                <Logo href={null} />
+                <Logo href={null} lockup="full" />
                 <p className="mt-3 max-w-xs text-sm text-muted">
                   India’s trusted business review directory. Read honest reviews and share your own.
                 </p>
