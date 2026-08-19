@@ -1,15 +1,15 @@
 #!/bin/bash
 # Cron entry point for the weekly database backup:
 #
-#   0 3 * * 0 /bin/bash /home/trustindexindia/trustindex/scripts/backup-db.sh >> /home/trustindexindia/logs/backup.log 2>&1
+#   0 3 * * 0 /bin/bash /home/kingsreviews/kingsreviews/scripts/backup-db.sh >> /home/kingsreviews/logs/backup.log 2>&1
 #
 # The work is in backup-db.ts — dump, gzip, upload to Drive, write the row the
 # admin panel reads. This file exists only because cron starts in a shell with
 # none of CloudLinux's Node on PATH, the same reason deploy.sh does.
 set -euo pipefail
 
-APP=/home/trustindexindia/trustindex
-VENV=/home/trustindexindia/nodevenv/trustindex/24
+APP=/home/kingsreviews/kingsreviews
+VENV=/home/kingsreviews/nodevenv/kingsreviews/24
 
 # CloudLinux's activate reads CL_VIRTUAL_ENV before setting it, which `set -u`
 # treats as fatal — relax it for exactly that line.

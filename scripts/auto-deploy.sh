@@ -4,17 +4,17 @@
 # The host firewalls SSH, so GitHub cannot push a deploy in; the server pulls
 # instead. Run it every couple of minutes:
 #
-#   */2 * * * * /bin/bash /home/trustindexindia/trustindex/scripts/auto-deploy.sh >> /home/trustindexindia/logs/deploy.log 2>&1
+#   */2 * * * * /bin/bash /home/kingsreviews/kingsreviews/scripts/auto-deploy.sh >> /home/kingsreviews/logs/deploy.log 2>&1
 set -euo pipefail
 
-APP=/home/trustindexindia/trustindex
-LOCK=/home/trustindexindia/tmp/deploy.lock
+APP=/home/kingsreviews/kingsreviews
+LOCK=/home/kingsreviews/tmp/deploy.lock
 # The last commit that actually finished a deploy — deliberately not the
 # checked-out HEAD. deploy.sh resets the working copy to origin/master as its
 # first step, so a deploy that dies later still leaves HEAD on the new commit;
 # comparing HEAD then reads as "nothing to do" and the failure is never retried.
 # That is exactly how a build that never ran sat there serving the old .next.
-STATE=/home/trustindexindia/tmp/deployed.sha
+STATE=/home/kingsreviews/tmp/deployed.sha
 
 mkdir -p "$(dirname "$LOCK")"
 exec 9>"$LOCK"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Production deploy, run on the cPanel server by .github/workflows/deploy.yml.
+# Production deploy, run on the cPanel server by scripts/auto-deploy.sh (cron).
 #
 # Every step here exists because of how CloudLinux packages Node: binaries are
 # not on PATH, npm is behind a wrapper that refuses to run once node_modules is
@@ -7,8 +7,8 @@
 # tmp/restart.txt is touched.
 set -euo pipefail
 
-APP=/home/trustindexindia/trustindex
-VENV=/home/trustindexindia/nodevenv/trustindex/24
+APP=/home/kingsreviews/kingsreviews
+VENV=/home/kingsreviews/nodevenv/kingsreviews/24
 NPM=/opt/alt/alt-nodejs24/root/usr/lib/node_modules/npm/bin/npm-cli.js
 
 # CloudLinux's activate script reads CL_VIRTUAL_ENV before setting it, which
