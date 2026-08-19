@@ -7,6 +7,14 @@ import { BRAND_COLORS, BRAND_NAME, EMBLEM_PARTS, EMBLEM_VIEWBOX } from '@/lib/br
 const LOCKUP_RATIO = 770.12 / 248.47
 
 /**
+ * The wordmark cropped to its own ink (469.9 × 187.5 — see gen-brand-assets).
+ * On the shared canvas the word reaches only three quarters of the crest's
+ * height, so at nav size it sat at 33px beside a 44px tile and read as a
+ * caption. Setting the two side by side lets the word match the tile.
+ */
+const WORDMARK_RATIO = 469.9 / 187.5
+
+/**
  * Two cuts of the same artwork. `/logo.svg` is the file as supplied, strapline
  * and all; `/logo-wordmark.svg` is that file with the strapline group removed,
  * because at nav height those letters are under four pixels tall and read as
@@ -109,15 +117,35 @@ export function Logo({
   const height = lockup === 'full' ? Math.round(s.lockup * 1.3) : s.lockup
 
   const inner = showText ? (
-    <Image
-      src={LOCKUPS[lockup]}
-      alt={BRAND_NAME}
-      width={Math.round(height * LOCKUP_RATIO)}
-      height={height}
-      priority
-      unoptimized
-      className={`shrink-0 ${className}`}
-    />
+    lockup === 'full' ? (
+      <Image
+        src={LOCKUPS.full}
+        alt={BRAND_NAME}
+        width={Math.round(height * LOCKUP_RATIO)}
+        height={height}
+        priority
+        unoptimized
+        className={`shrink-0 ${className}`}
+      />
+    ) : (
+      /* Crest and word set as two pieces rather than one drawn lockup, so the
+         word can be given the tile's height instead of the three quarters of it
+         the artwork allots. Same two shapes, same gap — only the ratio moves. */
+      <span className={`inline-flex items-center gap-2.5 ${className}`}>
+        <BrandMark size={height} radius={Math.round(height * 0.28)} />
+        <Image
+          src="/logo-wordmark-text.svg"
+          /* BrandMark beside it already carries the name; labelling both makes
+             a screen reader read the brand twice for one logo. */
+          alt=""
+          width={Math.round(height * WORDMARK_RATIO)}
+          height={height}
+          priority
+          unoptimized
+          className="shrink-0"
+        />
+      </span>
+    )
   ) : (
     <span className={`inline-flex items-center ${className}`}>
       <BrandMark size={s.tile} radius={s.radius} />

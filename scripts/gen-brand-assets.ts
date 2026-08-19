@@ -63,12 +63,44 @@ function lockup(sourceRel: string): string {
   return `${stripped.slice(0, first)}${tile}${stripped.slice(first)}`
 }
 
+/**
+ * Where the wordmark's ink actually sits inside the 770.12 × 248.47 canvas,
+ * measured off the artwork with getBBox. The letters take three quarters of the
+ * canvas height, so a lockup drawn at nav height puts the crest at the full
+ * 44px and the word at 33 — small enough that people read the tile and skip the
+ * name.
+ */
+const WORDMARK_BOX = { x: 284.63, y: 42.19, w: 469.9, h: 187.5 }
+
+/**
+ * The wordmark on its own, cropped to that box, so the nav can set its height
+ * against the crest tile rather than against the canvas the artwork was drawn
+ * on. Cropping alone would not do it — the crest has to come out, or the tight
+ * viewBox still reserves the column it stood in.
+ */
+function wordmarkOnly(sourceRel: string): string {
+  const src = readFileSync(join(ROOT, sourceRel), 'utf8')
+  const crown = new Set(EMBLEM_PARTS.map((p) => p.d))
+
+  let removed = 0
+  const stripped = src.replace(/<path[^>]*?d="([^"]+)"[^>]*\/>/g, (tag, d) => {
+    if (!crown.has(d)) return tag
+    removed++
+    return ''
+  })
+  if (removed === 0) throw new Error(`no crown paths in ${sourceRel}`)
+
+  const { x, y, w, h } = WORDMARK_BOX
+  return stripped.replace(/viewBox="[^"]*"/, `viewBox="${x} ${y} ${w} ${h}"`)
+}
+
 const targets: [string, string][] = [
   ['public/icon.svg', icon(64)],
   ['src/app/icon.svg', icon(64)],
   ['public/logo-mark.svg', icon(256)],
   ['public/logo.svg', lockup('assets/brand/lockup-full.svg')],
   ['public/logo-wordmark.svg', lockup('assets/brand/lockup-wordmark.svg')],
+  ['public/logo-wordmark-text.svg', wordmarkOnly('assets/brand/lockup-wordmark.svg')],
 ]
 
 for (const [rel, svg] of targets) {
