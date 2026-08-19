@@ -103,7 +103,7 @@ async function NavAuth() {
         </div>
       )}
 
-      <MobileMenu role={user?.role ?? null} />
+      <MobileMenu role={user?.role ?? null} email={user?.email ?? null} />
     </>
   )
 }

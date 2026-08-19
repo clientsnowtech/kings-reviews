@@ -16,6 +16,20 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? BRAND_NAME
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3300'
 
+/**
+ * Search Console and Webmaster issue one token per property, and a site that
+ * answers on more than one host — the old domain still redirecting, www beside
+ * the apex — has to prove itself for each. So these read as comma-separated
+ * lists rather than single values, and every token ships as its own meta tag.
+ */
+function verificationTokens(raw: string | undefined) {
+  const tokens = (raw ?? '')
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+  return tokens.length > 0 ? tokens : undefined
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
@@ -27,8 +41,8 @@ export const metadata: Metadata = {
   // Search-console ownership proof. A bare meta tag — no script, no cookie — so
   // it sits outside the consent gate that Analytics() lives behind.
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || undefined,
-    yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || undefined,
+    google: verificationTokens(process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION),
+    yandex: verificationTokens(process.env.NEXT_PUBLIC_YANDEX_VERIFICATION),
   },
 }
 

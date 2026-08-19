@@ -89,7 +89,11 @@ export default async function BusinessLayout({
             pendingReviews={pendingReviews}
           />
         </aside>
-        <main className="min-w-0">{children}</main>
+        {/* overflow-x-clip on top of min-w-0: min-w-0 stops the grid track from
+            growing, but a child that overflows its track still paints past the
+            viewport. Clipping here leaves the panel's own scroll boxes (tables,
+            the badge snippet) working while the page itself never slides. */}
+        <main className="min-w-0 overflow-x-clip">{children}</main>
       </div>
     </div>
   )

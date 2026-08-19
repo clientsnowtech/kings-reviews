@@ -58,6 +58,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* One stray wide child — a table, a long unbroken URL, a chart — used to give
+     the whole phone a sideways scroll. The fix has to be `clip` rather than
+     `hidden`: `hidden` turns this into a scroll container, which silently kills
+     `position: sticky` on the header. Anything that genuinely needs to scroll
+     sideways carries its own overflow-x-auto box. */
+  overflow-x: clip;
 }
 
 /* Layered so Tailwind text-* utilities (e.g. text-white on active pills)
