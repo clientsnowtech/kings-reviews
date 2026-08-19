@@ -43,7 +43,13 @@ export function BusinessCard({ b }: { b: CardBusiness }) {
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        {/* min-w-0 on the row too, not just its parent: `truncate` sets
+            white-space: nowrap, so a name like "Arcadia Share and Stock Brokers
+            Private Limited" reports its full width as this row's min-content.
+            A grid track sizes to the widest item's min-content, so one long
+            listing widened the whole page and gave every phone a sideways
+            scroll — truncation only starts working once the row may shrink. */}
+        <div className="flex min-w-0 items-center gap-1.5">
           <h3 className="truncate font-semibold group-hover:text-brand">{b.name}</h3>
           {b.verifiedAt && <BadgeCheck size={16} className="shrink-0 text-brand" />}
         </div>
@@ -54,7 +60,7 @@ export function BusinessCard({ b }: { b: CardBusiness }) {
           <span className="text-xs text-muted">({b.ratingCount})</span>
         </div>
 
-        <div className="mt-1.5 flex items-center gap-1 text-xs text-muted">
+        <div className="mt-1.5 flex min-w-0 items-center gap-1 text-xs text-muted">
           <MapPin size={13} />
           <span className="truncate">
             {b.city}, {b.state}
