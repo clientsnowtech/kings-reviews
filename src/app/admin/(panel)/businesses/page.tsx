@@ -83,28 +83,29 @@ export default async function AdminBusinesses({
           >
             Export CSV
           </a>
-          <form className="relative">
-            {filter !== 'ALL' && <input type="hidden" name="status" value={filter} />}
-            {city && <input type="hidden" name="city" value={city} />}
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Search name, city, email…"
-              className="h-9 w-64 rounded-full border bg-background pl-9 pr-3 text-sm outline-none focus:border-brand"
-            />
-          </form>
         </div>
       </div>
 
-      {/* One city at a time is how a hundred thousand listings get worked
-          through — the free-text box matches too loosely to sort by. */}
-      {cities.length > 1 && (
-        <form className="flex flex-wrap items-end gap-2 rounded-lg border bg-surface p-2.5 text-sm">
-          {filter !== 'ALL' && <input type="hidden" name="status" value={filter} />}
-          {q && <input type="hidden" name="q" value={q} />}
-          <div className="w-64">
-            <label className="mb-1 block text-xs text-muted">City</label>
+      {/* Text search and the city picker are one form: they are read together
+          on every query, and two rows made an admin submit twice. One city at a
+          time is how a hundred thousand listings get worked through — the
+          free-text box matches too loosely to sort by. */}
+      <form className="flex flex-wrap items-center gap-2 rounded-lg border bg-surface p-2.5 text-sm">
+        {filter !== 'ALL' && <input type="hidden" name="status" value={filter} />}
+        <div className="relative min-w-[220px] flex-1">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Search name, city, email…"
+            className="h-11 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-brand"
+          />
+        </div>
+        {cities.length > 1 && (
+          <div className="w-56">
             <SearchableSelect
               name="city"
               options={cities}
@@ -112,19 +113,19 @@ export default async function AdminBusinesses({
               placeholder="All cities"
             />
           </div>
-          <button className="h-11 rounded-lg bg-brand px-5 font-medium text-white hover:bg-brand-strong">
-            Filter
-          </button>
-          {city && (
-            <Link
-              href={`/admin/businesses${filter === 'ALL' ? '' : `?status=${filter}`}`}
-              className="inline-flex h-11 items-center rounded-lg border px-4 text-muted hover:bg-mint"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-      )}
+        )}
+        <button className="h-11 rounded-lg bg-brand px-5 font-medium text-white hover:bg-brand-strong">
+          Filter
+        </button>
+        {(city || q) && (
+          <Link
+            href={`/admin/businesses${filter === 'ALL' ? '' : `?status=${filter}`}`}
+            className="inline-flex h-11 items-center rounded-lg border px-4 text-muted hover:bg-mint"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
 
       <div className="flex flex-wrap gap-2">
         {STATUSES.map((s) => {
