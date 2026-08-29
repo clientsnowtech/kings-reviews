@@ -193,12 +193,19 @@ export default async function OverviewPage() {
                     </SubmitButton>
                   </form>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <p className="text-muted">
                       Verify your business to unlock the website badge —{' '}
                       {readiness.missing.length} task
                       {readiness.missing.length === 1 ? '' : 's'} left ({readiness.pct}% done)
                     </p>
+                    {/* straight at the first unfinished task, not the top of the form */}
+                    <Link
+                      href={`/business/dashboard/businesses/${b.id}/edit#${readiness.missing[0].anchor}`}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong"
+                    >
+                      <BadgeCheck size={15} /> Verify your business now
+                    </Link>
                     {/* each task links straight at the section that fixes it */}
                     <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
                       {readiness.missing.map((c) => (

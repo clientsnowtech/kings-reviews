@@ -116,14 +116,24 @@ function VerifyPrompt({ b, compact }: { b: StudioBusiness; compact?: boolean }) 
           <input type="hidden" name="businessId" value={b.id} />
           <SubmitButton
             pendingLabel="Requesting…"
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+            className="gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
           >
             <BadgeCheck size={15} /> Verify now
           </SubmitButton>
         </form>
       ) : (
-        <div className="space-y-1.5">
-          <p className="text-sm">
+        <div className="space-y-2.5">
+          {/* the button lands on the first unfinished task rather than the top
+              of a long form — the owner is one click from finishing it */}
+          <div className={compact ? '' : 'flex justify-center'}>
+            <Link
+              href={`${editHref}#${b.verifyMissing[0]?.anchor ?? 'media'}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+            >
+              <BadgeCheck size={15} /> Verify your business now
+            </Link>
+          </div>
+          <p className="text-sm text-muted">
             {b.verifyMissing.length} task{b.verifyMissing.length === 1 ? '' : 's'} left before you
             can ask:
           </p>
