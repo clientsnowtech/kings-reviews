@@ -22,6 +22,7 @@ export default async function BadgePage() {
       ratingAvg: true,
       ratingCount: true,
       verifiedAt: true,
+      verifyRequestedAt: true,
       badgeEnabled: true,
     },
   })
@@ -51,6 +52,7 @@ export default async function BadgePage() {
     ratingAvg: Number(r.ratingAvg),
     ratingCount: r.ratingCount,
     verified: r.verifiedAt !== null,
+    verifyRequested: r.verifyRequestedAt !== null,
     badgeEnabled: r.badgeEnabled,
   }))
 

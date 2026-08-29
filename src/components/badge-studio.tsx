@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { BadgeCheck, Check, Copy, ExternalLink, Globe, Info } from 'lucide-react'
 import {
@@ -25,6 +26,7 @@ export type StudioBusiness = {
   ratingAvg: number
   ratingCount: number
   verified: boolean
+  verifyRequested: boolean
   badgeEnabled: boolean
 }
 
@@ -99,8 +101,12 @@ export function BadgeStudio({
   const [theme, setTheme] = useState<BadgeTheme>('light')
 
   const b = businesses.find((x) => x.id === id) ?? businesses[0]
-  const live = b.status === 'LIVE' && b.badgeEnabled
+  // the badge is earned, not granted: an approved listing still has to clear
+  // verification before any embed code or preview is handed out
+  const live = b.status === 'LIVE' && b.badgeEnabled && b.verified
   const revoked = b.status === 'LIVE' && !b.badgeEnabled
+  const unverified = b.status === 'LIVE' && b.badgeEnabled && !b.verified
+  const verifyHref = `/business/dashboard/businesses/${b.id}/edit`
   const seen = stats[b.id]
   const tier = tierFor(b.ratingCount, b.ratingAvg)
   const up = nextTier(b.ratingCount, b.ratingAvg)
@@ -304,10 +310,14 @@ ${creditLink}
               alt={`${b.name} badge preview`}
             />
           ) : (
-            <p className="max-w-[220px] text-center text-sm text-muted">
+            <p className="max-w-[240px] text-center text-sm text-muted">
               {revoked
                 ? 'Badge revoked by an admin. Contact support to restore it.'
-                : 'Badge goes live once this listing is approved.'}
+                : unverified
+                  ? b.verifyRequested
+                    ? 'Verification is under review. The badge unlocks as soon as it is approved.'
+                    : 'Verify this business first — the badge unlocks once verification is approved.'
+                  : 'Badge goes live once this listing is approved.'}
             </p>
           )}
         </div>
@@ -334,9 +344,23 @@ ${creditLink}
         </div>
       ) : (
         <p className="rounded-xl border bg-surface px-4 py-3 text-sm text-muted">
-          {revoked
-            ? 'This badge has been revoked, so the embed code is hidden. Badges are revoked when the profile link or the build credit is stripped from the snippet.'
-            : 'Embed code appears here after an admin approves the listing.'}
+          {revoked ? (
+            'This badge has been revoked, so the embed code is hidden. Badges are revoked when the profile link or the build credit is stripped from the snippet.'
+          ) : unverified ? (
+            b.verifyRequested ? (
+              'Verification requested. The embed code appears here once an admin approves it.'
+            ) : (
+              <>
+                Only verified businesses can put the badge on their website.{' '}
+                <Link href={verifyHref} className="font-medium text-brand hover:underline">
+                  Request verification
+                </Link>{' '}
+                to unlock the embed code.
+              </>
+            )
+          ) : (
+            'Embed code appears here after an admin approves the listing.'
+          )}
         </p>
       )}
 

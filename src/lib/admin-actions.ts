@@ -776,15 +776,20 @@ export async function bulkBusinessStatus(formData: FormData) {
 export async function approveVerification(formData: FormData) {
   const session = await requireAdmin()
   const id = String(formData.get('id'))
-  await db.business.update({
+  const biz = await db.business.update({
     where: { id },
     data: { verifiedAt: new Date(), verifyRequestedAt: null, status: 'LIVE' },
+    select: { slug: true },
   })
+  // the badge only serves for verified listings, so the memo has to be dropped
+  // or the 404 keeps being served for up to a minute after approval
+  forgetBadgeBusiness(biz.slug)
   // verifying also approves, so a listing can enter LIVE through this door too
   await recountCategories(await categoryIdsOf(id))
   await logAudit(session, 'business.verify', 'business', id)
   revalidatePath('/admin/verifications')
   revalidatePath('/admin')
+  revalidatePath(`/company/${biz.slug}`)
 }
 
 export async function rejectVerification(formData: FormData) {

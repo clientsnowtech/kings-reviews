@@ -49,8 +49,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const business = await getBadgeBusiness(slug)
 
-  // a revoked badge answers exactly like an unknown one — no signal to scrape
-  if (!business || !business.badgeEnabled) {
+  // an unverified or revoked badge answers exactly like an unknown one — no
+  // signal to scrape, and the badge is only earned once verification lands
+  if (!business || !business.badgeEnabled || !business.verified) {
     return svg(notFoundSvg(theme), 404, 'public, max-age=60')
   }
 

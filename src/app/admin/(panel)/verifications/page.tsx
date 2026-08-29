@@ -5,6 +5,7 @@ import { Stars } from '@/components/stars'
 import { SubmitButton } from '@/components/submit-button'
 import { approveVerification, rejectVerification } from '@/lib/admin-actions'
 import { formatDate } from '@/lib/utils'
+import { verificationReadiness } from '@/lib/verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,11 @@ export default async function AdminVerifications() {
   const pending = await db.business.findMany({
     where: { verifyRequestedAt: { not: null }, verifiedAt: null },
     orderBy: { verifyRequestedAt: 'asc' },
-    include: { category: { select: { name: true } }, owner: { select: { email: true } } },
+    include: {
+      category: { select: { name: true } },
+      owner: { select: { email: true } },
+      _count: { select: { hours: true, images: true } },
+    },
   })
 
   return (
@@ -24,7 +29,21 @@ export default async function AdminVerifications() {
         <p className="rounded-xl border bg-surface p-8 text-center text-muted">No pending requests.</p>
       ) : (
         <div className="space-y-3">
-          {pending.map((b) => (
+          {pending.map((b) => {
+            // owners cannot submit an incomplete listing, but admin-created and
+            // imported rows can drift — so the queue shows what is actually there
+            const readiness = verificationReadiness({
+              logo: b.logo,
+              cover: b.cover,
+              description: b.description,
+              website: b.website,
+              address: b.address,
+              pincode: b.pincode,
+              mapUrl: b.mapUrl,
+              hours: b._count.hours,
+              images: b._count.images,
+            })
+            return (
             <div key={b.id} className="rounded-xl border bg-surface p-4">
               <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0 flex-1">
@@ -45,6 +64,18 @@ export default async function AdminVerifications() {
                   <div className="font-bold">{Number(b.ratingAvg).toFixed(1)}</div>
                   <Stars value={Number(b.ratingAvg)} size="sm" />
                 </div>
+              </div>
+
+              <div className="mt-3 border-t pt-3 text-xs">
+                <span className={readiness.ready ? 'font-medium text-brand' : 'font-medium text-amber-700'}>
+                  Profile {readiness.pct}% ({readiness.done}/{readiness.total})
+                </span>
+                {!readiness.ready && (
+                  <span className="text-muted">
+                    {' '}
+                    · missing {readiness.missing.map((c) => c.label.toLowerCase()).join(', ')}
+                  </span>
+                )}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
@@ -68,7 +99,8 @@ export default async function AdminVerifications() {
                 </form>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import { recomputeRating } from './rating'
 import { sendMail, reviewDecidedMail, reviewCardMail } from './mail'
 import { saveImages, deleteUploads } from './upload'
 import { shortReviewLink } from './review-link'
+import { businessReadiness } from './verification-server'
 
 /**
  * Returns the business only if the caller owns it (or is acting for its owner).
@@ -227,6 +228,11 @@ export async function requestVerification(formData: FormData) {
   const businessId = String(formData.get('businessId'))
   const biz = await ownedBusiness(businessId)
   if (!biz || biz.verifiedAt) return
+
+  // the button is hidden until the checklist is clear, but the form post is
+  // the real gate: an incomplete listing must never reach the admin queue
+  const readiness = await businessReadiness(businessId)
+  if (!readiness?.ready) return
 
   await db.business.update({
     where: { id: businessId },

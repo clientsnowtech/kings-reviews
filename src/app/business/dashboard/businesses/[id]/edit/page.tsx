@@ -1,38 +1,14 @@
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, ShieldQuestion, Clock3 } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Check, Circle, ShieldQuestion, Clock3 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { requireOwnedBusiness } from '@/lib/business'
 import { BusinessEditForm } from '@/components/business-edit-form'
 import { BusinessHoursForm } from '@/components/business-hours-form'
 import { BusinessGallery } from '@/components/business-gallery'
 import { requestVerification } from '@/lib/business-actions'
+import { verificationReadiness } from '@/lib/verification'
 
 export const dynamic = 'force-dynamic'
-
-// Weighted checklist that drives the profile-completeness meter.
-function completeness(b: {
-  logo: string | null
-  cover: string | null
-  description: string | null
-  website: string | null
-  address: string | null
-  pincode: string | null
-  hours: number
-  images: number
-}) {
-  const checks = [
-    { ok: !!b.logo, label: 'Add a logo' },
-    { ok: !!b.cover, label: 'Add a cover image' },
-    { ok: !!b.description && b.description.length >= 40, label: 'Write a description (40+ chars)' },
-    { ok: !!b.website, label: 'Add a website' },
-    { ok: !!b.address, label: 'Add a street address' },
-    { ok: !!b.pincode, label: 'Add a pincode' },
-    { ok: b.hours > 0, label: 'Set business hours' },
-    { ok: b.images >= 3, label: 'Upload at least 3 photos' },
-  ]
-  const done = checks.filter((c) => c.ok).length
-  return { pct: Math.round((done / checks.length) * 100), checks }
-}
 
 export default async function EditBusinessPage({
   params,
@@ -50,13 +26,15 @@ export default async function EditBusinessPage({
   ])
   const extraCategoryIds = extras.map((c) => c.id)
 
-  const meter = completeness({
+  // the same checklist the verification guard runs server-side
+  const meter = verificationReadiness({
     logo: business.logo,
     cover: business.cover,
     description: business.description,
     website: business.website,
     address: business.address,
     pincode: business.pincode,
+    mapUrl: business.mapUrl,
     hours: hours.length,
     images: images.length,
   })
@@ -84,13 +62,21 @@ export default async function EditBusinessPage({
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-border/60">
           <div className="h-full rounded-full bg-brand" style={{ width: `${meter.pct}%` }} />
         </div>
-        {meter.pct < 100 && (
-          <ul className="mt-3 space-y-1 text-sm text-muted">
-            {meter.checks.filter((c) => !c.ok).map((c) => (
-              <li key={c.label}>• {c.label}</li>
-            ))}
-          </ul>
-        )}
+        <ul className="mt-3 space-y-1 text-sm">
+          {meter.checks.map((c) => (
+            <li
+              key={c.key}
+              className={c.ok ? 'flex items-center gap-2 text-muted' : 'flex items-center gap-2'}
+            >
+              {c.ok ? (
+                <Check size={15} className="shrink-0 text-brand" />
+              ) : (
+                <Circle size={15} className="shrink-0 text-muted" />
+              )}
+              <span className={c.ok ? 'line-through' : ''}>{c.label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* verification */}
@@ -103,12 +89,12 @@ export default async function EditBusinessPage({
           <p className="flex items-center gap-2 text-sm text-amber-700">
             <Clock3 size={17} /> Verification requested — an admin will review it soon.
           </p>
-        ) : (
+        ) : meter.ready ? (
           <form action={requestVerification} className="flex flex-wrap items-center justify-between gap-3">
             <input type="hidden" name="businessId" value={business.id} />
             <p className="flex items-center gap-2 text-sm">
               <ShieldQuestion size={17} className="text-muted" />
-              Get a verified badge to build customer trust.
+              Profile complete. Ask an admin to verify this business.
             </p>
             <button
               type="submit"
@@ -117,6 +103,24 @@ export default async function EditBusinessPage({
               Request verification
             </button>
           </form>
+        ) : (
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-sm">
+              <ShieldQuestion size={17} className="text-muted" />
+              Finish the profile to unlock verification — and with it the website badge.
+            </p>
+            <p className="text-sm text-muted">
+              {meter.missing.length} task{meter.missing.length === 1 ? '' : 's'} left:{' '}
+              {meter.missing.map((c) => c.label.toLowerCase()).join(', ')}.
+            </p>
+            <button
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-lg border px-4 py-2 text-sm font-medium text-muted"
+            >
+              Request verification
+            </button>
+          </div>
         )}
       </div>
 
