@@ -22,7 +22,8 @@ export type ReadinessInput = {
   images: number
 }
 
-export type ReadinessCheck = { key: string; label: string; ok: boolean }
+/** `anchor` is the id of the edit-page section that fixes the task. */
+export type ReadinessCheck = { key: string; label: string; ok: boolean; anchor: string }
 
 export type Readiness = {
   checks: ReadinessCheck[]
@@ -40,19 +41,25 @@ function filled(v: string | null): boolean {
 
 export function verificationReadiness(b: ReadinessInput): Readiness {
   const checks: ReadinessCheck[] = [
-    { key: 'logo', label: 'Add a logo', ok: filled(b.logo) },
-    { key: 'cover', label: 'Add a cover image', ok: filled(b.cover) },
+    { key: 'logo', label: 'Add a logo', ok: filled(b.logo), anchor: 'media' },
+    { key: 'cover', label: 'Add a cover image', ok: filled(b.cover), anchor: 'media' },
     {
       key: 'description',
       label: `Write a description (${MIN_DESCRIPTION}+ characters)`,
       ok: (b.description?.trim().length ?? 0) >= MIN_DESCRIPTION,
+      anchor: 'about',
     },
-    { key: 'website', label: 'Add your website', ok: filled(b.website) },
-    { key: 'address', label: 'Add a street address', ok: filled(b.address) },
-    { key: 'pincode', label: 'Add a pincode', ok: filled(b.pincode) },
-    { key: 'map', label: 'Add your Google Maps link', ok: filled(b.mapUrl) },
-    { key: 'hours', label: 'Set business hours', ok: b.hours > 0 },
-    { key: 'images', label: `Upload at least ${MIN_IMAGES} photos`, ok: b.images >= MIN_IMAGES },
+    { key: 'website', label: 'Add your website', ok: filled(b.website), anchor: 'contact' },
+    { key: 'address', label: 'Add a street address', ok: filled(b.address), anchor: 'location' },
+    { key: 'pincode', label: 'Add a pincode', ok: filled(b.pincode), anchor: 'location' },
+    { key: 'map', label: 'Add your Google Maps link', ok: filled(b.mapUrl), anchor: 'contact' },
+    { key: 'hours', label: 'Set business hours', ok: b.hours > 0, anchor: 'hours' },
+    {
+      key: 'images',
+      label: `Upload at least ${MIN_IMAGES} photos`,
+      ok: b.images >= MIN_IMAGES,
+      anchor: 'photos',
+    },
   ]
 
   const missing = checks.filter((c) => !c.ok)

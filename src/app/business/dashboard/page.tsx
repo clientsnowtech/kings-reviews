@@ -1,11 +1,22 @@
 import Link from 'next/link'
-import { Star, MessageSquareReply, Building2, MailWarning, QrCode } from 'lucide-react'
+import {
+  Star,
+  MessageSquareReply,
+  Building2,
+  MailWarning,
+  QrCode,
+  BadgeCheck,
+  Clock3,
+} from 'lucide-react'
 import { db } from '@/lib/db'
 import { requireOwner } from '@/lib/business'
 import { Stars } from '@/components/stars'
 import { AskForReview } from '@/components/ask-for-review'
 import { askTargets } from '@/lib/review-link'
 import { colorFrom, initials, formatDate } from '@/lib/utils'
+import { SubmitButton } from '@/components/submit-button'
+import { requestVerification } from '@/lib/business-actions'
+import { verificationReadiness } from '@/lib/verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +33,10 @@ export default async function OverviewPage() {
   const businesses = await db.business.findMany({
     where: { ownerId },
     orderBy: { createdAt: 'desc' },
-    include: { category: { select: { name: true } } },
+    include: {
+      category: { select: { name: true } },
+      _count: { select: { hours: true, images: true } },
+    },
   })
 
   if (businesses.length === 0) {
@@ -101,7 +115,19 @@ export default async function OverviewPage() {
           <AskForReview businesses={targets} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {businesses.map((b) => (
+          {businesses.map((b) => {
+            const readiness = verificationReadiness({
+              logo: b.logo,
+              cover: b.cover,
+              description: b.description,
+              website: b.website,
+              address: b.address,
+              pincode: b.pincode,
+              mapUrl: b.mapUrl,
+              hours: b._count.hours,
+              images: b._count.images,
+            })
+            return (
             <div key={b.id} className="rounded-xl border bg-surface p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -143,8 +169,54 @@ export default async function OverviewPage() {
                   className="inline-flex items-center gap-1.5 rounded-md bg-background px-3 py-1.5 font-medium hover:bg-mint"
                 />
               </div>
+
+              {/* verification — the gate on the website badge, so it belongs
+                  where the owner actually lands, not two clicks deep */}
+              <div className="mt-3 border-t pt-3 text-sm">
+                {b.verifiedAt ? (
+                  <p className="flex items-center gap-1.5 font-medium text-brand">
+                    <BadgeCheck size={15} /> Verified
+                  </p>
+                ) : b.verifyRequestedAt ? (
+                  <p className="flex items-center gap-1.5 text-amber-700">
+                    <Clock3 size={15} /> Verification under review
+                  </p>
+                ) : readiness.ready ? (
+                  <form action={requestVerification} className="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="businessId" value={b.id} />
+                    <span className="text-muted">Profile complete.</span>
+                    <SubmitButton
+                      pendingLabel="Requesting…"
+                      className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong"
+                    >
+                      Request verification
+                    </SubmitButton>
+                  </form>
+                ) : (
+                  <div className="space-y-1.5">
+                    <p className="text-muted">
+                      Verification needs {readiness.missing.length} more task
+                      {readiness.missing.length === 1 ? '' : 's'} ({readiness.pct}% done)
+                    </p>
+                    {/* each task links straight at the section that fixes it */}
+                    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                      {readiness.missing.map((c) => (
+                        <li key={c.key}>
+                          <Link
+                            href={`/business/dashboard/businesses/${b.id}/edit#${c.anchor}`}
+                            className="font-medium text-brand hover:underline"
+                          >
+                            {c.label} →
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 

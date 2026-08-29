@@ -45,3 +45,10 @@ test('too few photos does not count', () => {
   assert.equal(r.missing[0].key, 'images')
   assert.equal(r.pct, Math.round(((r.total - 1) / r.total) * 100))
 })
+
+test('every task points at a section of the edit page', () => {
+  const anchors = new Set(['contact', 'about', 'location', 'media', 'hours', 'photos'])
+  for (const c of verificationReadiness(complete).checks) {
+    assert.ok(anchors.has(c.anchor), `${c.key} has no known anchor (${c.anchor})`)
+  }
+})

@@ -53,18 +53,21 @@ type Biz = {
  * without scrolling through their photos on the way.
  */
 function Card({
+  id,
   title,
   desc,
   icon: Icon,
   children,
 }: {
+  /** anchor the completeness checklist jumps to */
+  id?: string
   title: string
   desc?: string
   icon: LucideIcon
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border bg-surface p-6">
+    <section id={id} className="scroll-mt-24 rounded-2xl border bg-surface p-6">
       <div className="flex items-start gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-mint text-brand">
           <Icon size={17} />
@@ -148,6 +151,7 @@ export function BusinessEditForm({
 
       {/* Each of these turns into one action button on the public profile. */}
       <Card
+        id="contact"
         title="Company contact"
         desc="The business's own lines. Every field you fill becomes a button on your profile — Call, WhatsApp, Directions, Website, Email."
         icon={PhoneCall}
@@ -191,6 +195,7 @@ export function BusinessEditForm({
       </Card>
 
       <Card
+        id="about"
         title="About the business"
         desc="What a customer reads before deciding to call you."
         icon={FileText}
@@ -211,6 +216,7 @@ export function BusinessEditForm({
       </Card>
 
       <Card
+        id="location"
         title="Where you are"
         desc="Your city decides which searches you turn up in."
         icon={MapPin}
@@ -228,6 +234,7 @@ export function BusinessEditForm({
       </Card>
 
       <Card
+        id="media"
         title="Logo and cover"
         desc="The logo rides your review card and badge; the cover heads your profile."
         icon={ImageIcon}

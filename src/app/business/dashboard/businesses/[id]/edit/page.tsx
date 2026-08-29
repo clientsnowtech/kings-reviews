@@ -1,5 +1,13 @@
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, Check, Circle, ShieldQuestion, Clock3 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  Circle,
+  ShieldQuestion,
+  Clock3,
+} from 'lucide-react'
 import { db } from '@/lib/db'
 import { requireOwnedBusiness } from '@/lib/business'
 import { BusinessEditForm } from '@/components/business-edit-form'
@@ -7,6 +15,7 @@ import { BusinessHoursForm } from '@/components/business-hours-form'
 import { BusinessGallery } from '@/components/business-gallery'
 import { requestVerification } from '@/lib/business-actions'
 import { verificationReadiness } from '@/lib/verification'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,16 +73,22 @@ export default async function EditBusinessPage({
         </div>
         <ul className="mt-3 space-y-1 text-sm">
           {meter.checks.map((c) => (
-            <li
-              key={c.key}
-              className={c.ok ? 'flex items-center gap-2 text-muted' : 'flex items-center gap-2'}
-            >
-              {c.ok ? (
-                <Check size={15} className="shrink-0 text-brand" />
-              ) : (
-                <Circle size={15} className="shrink-0 text-muted" />
-              )}
-              <span className={c.ok ? 'line-through' : ''}>{c.label}</span>
+            <li key={c.key}>
+              <a
+                href={`#${c.anchor}`}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-1.5 py-1 -mx-1.5 transition hover:bg-mint',
+                  c.ok ? 'text-muted' : 'font-medium',
+                )}
+              >
+                {c.ok ? (
+                  <Check size={15} className="shrink-0 text-brand" />
+                ) : (
+                  <Circle size={15} className="shrink-0 text-muted" />
+                )}
+                <span className={c.ok ? 'line-through' : ''}>{c.label}</span>
+                {!c.ok && <ArrowRight size={14} className="ml-auto shrink-0 text-brand" />}
+              </a>
             </li>
           ))}
         </ul>
@@ -111,7 +126,15 @@ export default async function EditBusinessPage({
             </p>
             <p className="text-sm text-muted">
               {meter.missing.length} task{meter.missing.length === 1 ? '' : 's'} left:{' '}
-              {meter.missing.map((c) => c.label.toLowerCase()).join(', ')}.
+              {meter.missing.map((c, i) => (
+                <span key={c.key}>
+                  {i > 0 && ', '}
+                  <a href={`#${c.anchor}`} className="font-medium text-brand hover:underline">
+                    {c.label.toLowerCase()}
+                  </a>
+                </span>
+              ))}
+              .
             </p>
             <button
               type="button"
@@ -153,9 +176,13 @@ export default async function EditBusinessPage({
         extraCategoryIds={extraCategoryIds}
       />
 
-      <BusinessHoursForm businessId={business.id} hours={hours} />
+      <div id="hours" className="scroll-mt-24">
+        <BusinessHoursForm businessId={business.id} hours={hours} />
+      </div>
 
-      <BusinessGallery businessId={business.id} images={images} />
+      <div id="photos" className="scroll-mt-24">
+        <BusinessGallery businessId={business.id} images={images} />
+      </div>
     </div>
   )
 }
