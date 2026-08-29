@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { BadgeCheck, Check, Copy, ExternalLink, Globe, Info } from 'lucide-react'
+import { SubmitButton } from '@/components/submit-button'
+import { requestVerification } from '@/lib/business-actions'
 import {
   BADGE_SIZES,
   CREDIT_NAME,
@@ -27,6 +29,8 @@ export type StudioBusiness = {
   ratingCount: number
   verified: boolean
   verifyRequested: boolean
+  verifyReady: boolean
+  verifyMissing: { label: string; anchor: string }[]
   badgeEnabled: boolean
 }
 
@@ -87,6 +91,60 @@ function CopyBox({ label, code, note }: { label: string; code: string; note?: st
   )
 }
 
+/**
+ * The verification step, offered on the page where its absence is felt. Sending
+ * the owner to the edit form to find the same button is a click nobody makes.
+ */
+function VerifyPrompt({ b, compact }: { b: StudioBusiness; compact?: boolean }) {
+  const editHref = `/business/dashboard/businesses/${b.id}/edit`
+
+  if (b.verifyRequested) {
+    return (
+      <p className={cn('text-muted', compact ? 'text-sm' : 'max-w-[260px] text-center text-sm')}>
+        Verification is under review. The badge unlocks as soon as it is approved.
+      </p>
+    )
+  }
+
+  return (
+    <div className={cn('space-y-3', compact ? '' : 'max-w-[280px] text-center')}>
+      <p className="text-sm text-muted">
+        Verify this business first — the badge unlocks once verification is approved.
+      </p>
+      {b.verifyReady ? (
+        <form action={requestVerification} className={compact ? '' : 'flex justify-center'}>
+          <input type="hidden" name="businessId" value={b.id} />
+          <SubmitButton
+            pendingLabel="Requesting…"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+          >
+            <BadgeCheck size={15} /> Verify now
+          </SubmitButton>
+        </form>
+      ) : (
+        <div className="space-y-1.5">
+          <p className="text-sm">
+            {b.verifyMissing.length} task{b.verifyMissing.length === 1 ? '' : 's'} left before you
+            can ask:
+          </p>
+          <ul className={cn('space-y-1 text-sm', compact ? '' : 'inline-block text-left')}>
+            {b.verifyMissing.map((m) => (
+              <li key={m.label}>
+                <Link
+                  href={`${editHref}#${m.anchor}`}
+                  className="font-medium text-brand hover:underline"
+                >
+                  {m.label} →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function BadgeStudio({
   businesses,
   appUrl,
@@ -106,7 +164,6 @@ export function BadgeStudio({
   const live = b.status === 'LIVE' && b.badgeEnabled && b.verified
   const revoked = b.status === 'LIVE' && !b.badgeEnabled
   const unverified = b.status === 'LIVE' && b.badgeEnabled && !b.verified
-  const verifyHref = `/business/dashboard/businesses/${b.id}/edit`
   const seen = stats[b.id]
   const tier = tierFor(b.ratingCount, b.ratingAvg)
   const up = nextTier(b.ratingCount, b.ratingAvg)
@@ -309,15 +366,13 @@ ${creditLink}
               height={size.height}
               alt={`${b.name} badge preview`}
             />
+          ) : unverified ? (
+            <VerifyPrompt b={b} />
           ) : (
             <p className="max-w-[240px] text-center text-sm text-muted">
               {revoked
                 ? 'Badge revoked by an admin. Contact support to restore it.'
-                : unverified
-                  ? b.verifyRequested
-                    ? 'Verification is under review. The badge unlocks as soon as it is approved.'
-                    : 'Verify this business first — the badge unlocks once verification is approved.'
-                  : 'Badge goes live once this listing is approved.'}
+                : 'Badge goes live once this listing is approved.'}
             </p>
           )}
         </div>
@@ -343,25 +398,18 @@ ${creditLink}
           </p>
         </div>
       ) : (
-        <p className="rounded-xl border bg-surface px-4 py-3 text-sm text-muted">
+        <div className="rounded-xl border bg-surface px-4 py-3 text-sm text-muted">
           {revoked ? (
             'This badge has been revoked, so the embed code is hidden. Badges are revoked when the profile link or the build credit is stripped from the snippet.'
           ) : unverified ? (
-            b.verifyRequested ? (
-              'Verification requested. The embed code appears here once an admin approves it.'
-            ) : (
-              <>
-                Only verified businesses can put the badge on their website.{' '}
-                <Link href={verifyHref} className="font-medium text-brand hover:underline">
-                  Request verification
-                </Link>{' '}
-                to unlock the embed code.
-              </>
-            )
+            <div className="space-y-2">
+              <p>Only verified businesses can put the badge on their website.</p>
+              <VerifyPrompt b={b} compact />
+            </div>
           ) : (
             'Embed code appears here after an admin approves the listing.'
           )}
-        </p>
+        </div>
       )}
 
       {/* where the badge is being served */}

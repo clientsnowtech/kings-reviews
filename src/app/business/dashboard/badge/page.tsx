@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireOwner } from '@/lib/business'
 import { badgeViewStats } from '@/lib/badge-server'
 import { BadgeStudio } from '@/components/badge-studio'
+import { verificationReadiness } from '@/lib/verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,16 @@ export default async function BadgePage() {
       verifiedAt: true,
       verifyRequestedAt: true,
       badgeEnabled: true,
+      // the studio offers the verification step itself, so it needs the same
+      // checklist the edit page and the request guard run
+      logo: true,
+      cover: true,
+      description: true,
+      website: true,
+      address: true,
+      pincode: true,
+      mapUrl: true,
+      _count: { select: { hours: true, images: true } },
     },
   })
 
@@ -44,17 +55,32 @@ export default async function BadgePage() {
   // where the badge is actually being displayed, last 30 days
   const stats = await badgeViewStats(rows.map((r) => r.id))
 
-  const businesses = rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    slug: r.slug,
-    status: r.status,
-    ratingAvg: Number(r.ratingAvg),
-    ratingCount: r.ratingCount,
-    verified: r.verifiedAt !== null,
-    verifyRequested: r.verifyRequestedAt !== null,
-    badgeEnabled: r.badgeEnabled,
-  }))
+  const businesses = rows.map((r) => {
+    const readiness = verificationReadiness({
+      logo: r.logo,
+      cover: r.cover,
+      description: r.description,
+      website: r.website,
+      address: r.address,
+      pincode: r.pincode,
+      mapUrl: r.mapUrl,
+      hours: r._count.hours,
+      images: r._count.images,
+    })
+    return {
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      status: r.status,
+      ratingAvg: Number(r.ratingAvg),
+      ratingCount: r.ratingCount,
+      verified: r.verifiedAt !== null,
+      verifyRequested: r.verifyRequestedAt !== null,
+      verifyReady: readiness.ready,
+      verifyMissing: readiness.missing.map((c) => ({ label: c.label, anchor: c.anchor })),
+      badgeEnabled: r.badgeEnabled,
+    }
+  })
 
   return (
     <div className="space-y-5">

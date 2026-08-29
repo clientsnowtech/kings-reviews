@@ -187,16 +187,17 @@ export default async function OverviewPage() {
                     <span className="text-muted">Profile complete.</span>
                     <SubmitButton
                       pendingLabel="Requesting…"
-                      className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong"
+                      className="gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong"
                     >
-                      Request verification
+                      <BadgeCheck size={15} /> Verify now
                     </SubmitButton>
                   </form>
                 ) : (
                   <div className="space-y-1.5">
                     <p className="text-muted">
-                      Verification needs {readiness.missing.length} more task
-                      {readiness.missing.length === 1 ? '' : 's'} ({readiness.pct}% done)
+                      Verify your business to unlock the website badge —{' '}
+                      {readiness.missing.length} task
+                      {readiness.missing.length === 1 ? '' : 's'} left ({readiness.pct}% done)
                     </p>
                     {/* each task links straight at the section that fixes it */}
                     <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
