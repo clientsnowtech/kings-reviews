@@ -15,7 +15,14 @@ import {
   duplicateMessage,
 } from './business'
 import { forgetCities } from './cities'
-import { sendMail, businessDecisionMail, businessClaimMail } from './mail'
+import {
+  sendMail,
+  businessDecisionMail,
+  businessClaimMail,
+  businessVerifiedMail,
+  verificationRejectedMail,
+} from './mail'
+import { businessReadiness } from './verification-server'
 import {
   welcomeOwner,
   welcomeOwnerOfBusiness,
@@ -779,7 +786,7 @@ export async function approveVerification(formData: FormData) {
   const biz = await db.business.update({
     where: { id },
     data: { verifiedAt: new Date(), verifyRequestedAt: null, status: 'LIVE' },
-    select: { slug: true },
+    select: { slug: true, name: true, owner: { select: { email: true } } },
   })
   // the badge only serves for verified listings, so the memo has to be dropped
   // or the 404 keeps being served for up to a minute after approval
@@ -787,6 +794,14 @@ export async function approveVerification(formData: FormData) {
   // verifying also approves, so a listing can enter LIVE through this door too
   await recountCategories(await categoryIdsOf(id))
   await logAudit(session, 'business.verify', 'business', id)
+  // the badge is what most owners asked for — telling them is the whole point
+  await sendMail(
+    businessVerifiedMail({
+      to: biz.owner.email ?? '',
+      businessName: biz.name,
+      slug: biz.slug,
+    }),
+  )
   revalidatePath('/admin/verifications')
   revalidatePath('/admin')
   revalidatePath(`/company/${biz.slug}`)
@@ -795,8 +810,28 @@ export async function approveVerification(formData: FormData) {
 export async function rejectVerification(formData: FormData) {
   const session = await requireAdmin()
   const id = String(formData.get('id'))
-  await db.business.update({ where: { id }, data: { verifyRequestedAt: null } })
-  await logAudit(session, 'business.verify.reject', 'business', id)
+  const reason = String(formData.get('reason') ?? '').trim().slice(0, 500)
+
+  const biz = await db.business.update({
+    where: { id },
+    data: { verifyRequestedAt: null },
+    select: { name: true, owner: { select: { email: true } } },
+  })
+
+  // a rejection with no reason reads as a request that silently vanished, and
+  // the same unchanged listing comes straight back into the queue
+  const readiness = await businessReadiness(id)
+  await sendMail(
+    verificationRejectedMail({
+      to: biz.owner.email ?? '',
+      businessName: biz.name,
+      businessId: id,
+      reason,
+      missing: readiness?.missing.map((c) => c.label) ?? [],
+    }),
+  )
+
+  await logAudit(session, 'business.verify.reject', 'business', id, reason || undefined)
   revalidatePath('/admin/verifications')
   revalidatePath('/admin')
 }

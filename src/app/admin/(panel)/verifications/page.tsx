@@ -23,7 +23,10 @@ export default async function AdminVerifications() {
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-bold">Verification requests</h2>
-      <p className="text-sm text-muted">Businesses that asked for a verified badge.</p>
+      <p className="text-sm text-muted">
+        Businesses that asked for a verified badge. Both decisions email the owner — approving
+        unlocks their website badge, rejecting sends the reason and what is still missing.
+      </p>
 
       {pending.length === 0 ? (
         <p className="rounded-xl border bg-surface p-8 text-center text-muted">No pending requests.</p>
@@ -88,8 +91,16 @@ export default async function AdminVerifications() {
                     <BadgeCheck size={14} /> Approve & verify
                   </SubmitButton>
                 </form>
-                <form action={rejectVerification}>
+                {/* the reason travels to the owner, so it is asked for here
+                    rather than left to a follow-up nobody writes */}
+                <form action={rejectVerification} className="flex flex-1 flex-wrap items-center gap-2">
                   <input type="hidden" name="id" value={b.id} />
+                  <input
+                    name="reason"
+                    maxLength={500}
+                    placeholder="Reason sent to the owner (optional)"
+                    className="min-w-[220px] flex-1 rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:border-brand"
+                  />
                   <SubmitButton
                     pendingLabel="Rejecting…"
                     className="rounded-lg border px-3 py-1.5 text-xs font-medium text-muted hover:bg-red-50 hover:text-danger"

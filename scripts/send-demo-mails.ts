@@ -27,6 +27,8 @@ import {
   reviewPendingMail,
   reviewDecidedMail,
   reviewCardMail,
+  businessVerifiedMail,
+  verificationRejectedMail,
 } from '../src/lib/mail'
 import { reviewPosterSvg } from '../src/lib/review-qr'
 import { svgToPng } from '../src/lib/svg-raster'
@@ -114,6 +116,20 @@ function everyMail(to: string, card: Buffer | null): { key: string; mail: Mail }
         businessName: DEMO.name,
         city: DEMO.city,
         ownerEmail: 'owner@example.in',
+      }),
+    },
+    {
+      key: 'verified',
+      mail: businessVerifiedMail({ to, businessName: DEMO.name, slug: DEMO.slug }),
+    },
+    {
+      key: 'verify-rejected',
+      mail: verificationRejectedMail({
+        to,
+        businessName: DEMO.name,
+        businessId: 'demo-business-id',
+        reason: 'The Google Maps link points at a different address than the listing.',
+        missing: ['Add a cover image', 'Upload at least 3 photos'],
       }),
     },
     { key: 'review-pending', mail: reviewPendingMail({ to, businessName: DEMO.name, rating: 4, days: 7 }) },

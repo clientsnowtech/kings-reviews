@@ -546,3 +546,85 @@ export function reviewDecidedMail(args: {
         }),
   }
 }
+
+/**
+ * Verification approved. The badge is the reason most owners asked, so the
+ * mail's job is to get them to the studio while they are still reading.
+ */
+export function businessVerifiedMail(args: {
+  to: string
+  businessName: string
+  slug: string
+}): Mail {
+  const subject = `${args.businessName} is verified on Kings Reviews`
+  return {
+    to: args.to,
+    subject,
+    text: [
+      'Your business is verified. The verified tick is on your profile now.',
+      `${site()}/company/${args.slug}`,
+      '',
+      'Your website badge is unlocked too — pick a style and copy the code:',
+      `${site()}/business/dashboard/badge`,
+    ].join('\n'),
+    html: shell({
+      subject,
+      preheader: 'The verified tick is on your profile, and your website badge is unlocked.',
+      heading: `${args.businessName} is verified`,
+      body: [
+        p(
+          `The verified tick is on the profile of <strong>${esc(
+            args.businessName,
+          )}</strong> from now on.`,
+        ),
+        panel(
+          'Your website badge is unlocked. Pick a layout, copy the snippet and paste it on your site — the rating on it updates by itself.',
+        ),
+        button('Get your badge', `${site()}/business/dashboard/badge`),
+        linkLine('Your profile:', `${site()}/company/${args.slug}`),
+      ].join('\n'),
+    }),
+  }
+}
+
+/**
+ * Verification refused. Without a reason and a list of what is missing this
+ * reads as a request that vanished, and the owner simply sends it again.
+ */
+export function verificationRejectedMail(args: {
+  to: string
+  businessName: string
+  businessId: string
+  reason?: string | null
+  missing?: string[]
+}): Mail {
+  const subject = `${args.businessName} — verification not approved`
+  const editUrl = `${site()}/business/dashboard/businesses/${args.businessId}/edit`
+  const reason = args.reason?.trim()
+  const missing = args.missing ?? []
+
+  return {
+    to: args.to,
+    subject,
+    text: [
+      `We could not verify ${args.businessName} yet.`,
+      reason ? `Reason: ${reason}` : 'Reason: no reason given.',
+      ...(missing.length ? ['', 'Still missing:', ...missing.map((m) => `- ${m}`)] : []),
+      '',
+      'Fix it on the listing and request verification again — there is no limit on tries.',
+      editUrl,
+    ].join('\n'),
+    html: shell({
+      subject,
+      preheader: `We could not verify ${args.businessName} yet.`,
+      heading: 'Verification not approved',
+      body: [
+        p(`We could not verify <strong>${esc(args.businessName)}</strong> yet.`),
+        panel(`<strong>Reason:</strong> ${esc(reason || 'No reason given.')}`),
+        ...(missing.length ? [p('Still missing:'), bullets(missing.map(esc))] : []),
+        p('Fix it on the listing and request verification again — there is no limit on tries.'),
+        button('Open the listing', editUrl),
+      ].join('\n'),
+    }),
+  }
+}
