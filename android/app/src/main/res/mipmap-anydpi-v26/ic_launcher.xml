@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon: the gold field fills whatever shape the launcher cuts, and the
+  white crown sits inside the safe zone. Older launchers use the rounded-tile
+  PNGs in mipmap-*/ic_launcher.png instead. All PNGs come from
+  `npm run android:assets` in the repo root.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>

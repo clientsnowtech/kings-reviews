@@ -24,7 +24,21 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['business', 'shopping', 'lifestyle'],
     icons: [
       { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-      { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+      // Chrome only offers 'Install app' once it has a 192 and a 512 raster,
+      // and Play reads the maskable one for the listing. All three are written
+      // by `npm run android:assets`.
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+    // The Play listing of the Android shell in android/. Chrome shows this in
+    // the install prompt once the app is published; until then it is ignored.
+    related_applications: [
+      {
+        platform: 'play',
+        id: 'com.kingsreviews.app',
+        url: 'https://play.google.com/store/apps/details?id=com.kingsreviews.app',
+      },
     ],
   }
 }

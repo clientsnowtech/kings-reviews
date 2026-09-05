@@ -1,0 +1,124 @@
+plugins {
+    id 'com.android.application'
+}
+
+// One place for everything about the site the app wraps. The values feed both
+// the manifest (through resValue) and the Java, so a domain change is one edit.
+def twa = [
+    applicationId : 'com.kingsreviews.app',
+    hostName      : 'www.kingsreviews.com',
+    launchUrl     : '/',
+    name          : 'Kings Reviews',
+    launcherName  : 'Kings Reviews',
+    // status bar takes the brand green; the dark pair is the darker green
+    themeColor    : '#0c785d',
+    themeColorDark: '#0c624e',
+    navigationColor         : '#ffffff',
+    navigationColorDark     : '#0b1f19',
+    navigationDividerColor  : '#e4ece8',
+    navigationDividerColorDark: '#0b1f19',
+    // splash: the crest on white, matching the web manifest's background_color
+    backgroundColor: '#ffffff',
+    splashScreenFadeOutDuration: 300,
+    // the site sends no web push, so the app asks for no notification permission
+    enableNotifications: false,
+    // what to do on a phone with no browser that supports TWA
+    fallbackType: 'customtabs',
+    orientation: 'portrait',
+]
+
+// Release signing is opt-in: drop a keystore.properties next to build.gradle
+// (gitignored) and release builds come out signed. Without it the release
+// variant still builds, just unsigned, so a clean checkout is not broken.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.kingsreviews.app'
+    compileSdk 36
+
+    // AGP 9 ships resValue generation switched off; the manifest reads every
+    // colour and URL through it.
+    buildFeatures {
+        resValues true
+    }
+
+    defaultConfig {
+        applicationId twa.applicationId
+        minSdk 24
+        targetSdk 36
+        // Bump both for every Play upload: versionCode must rise, versionName
+        // is what people see under "About".
+        versionCode 1
+        versionName '1.0.0'
+
+        resValue 'string', 'appName', twa.name
+        resValue 'string', 'launcherName', twa.launcherName
+        resValue 'string', 'launchUrl', 'https://' + twa.hostName + twa.launchUrl
+        resValue 'string', 'hostName', twa.hostName
+        resValue 'string', 'webManifestUrl', 'https://' + twa.hostName + '/manifest.webmanifest'
+        resValue 'string', 'fullScopeUrl', 'https://' + twa.hostName + '/'
+        resValue 'string', 'providerAuthority', twa.applicationId + '.fileprovider'
+        resValue 'string', 'fallbackType', twa.fallbackType
+        resValue 'string', 'orientation', twa.orientation
+
+        resValue 'color', 'colorPrimary', twa.themeColor
+        resValue 'color', 'colorPrimaryDark', twa.themeColorDark
+        resValue 'color', 'navigationColor', twa.navigationColor
+        resValue 'color', 'navigationColorDark', twa.navigationColorDark
+        resValue 'color', 'navigationDividerColor', twa.navigationDividerColor
+        resValue 'color', 'navigationDividerColorDark', twa.navigationDividerColorDark
+        resValue 'color', 'backgroundColor', twa.backgroundColor
+
+        resValue 'bool', 'enableNotification', twa.enableNotifications.toString()
+        resValue 'integer', 'splashScreenFadeOutDuration', twa.splashScreenFadeOutDuration.toString()
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreProps['storeFile']) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystoreProps['storeFile']) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    // kingsreviews-v1.0.0.apk rather than app-release.apk, so the file is still
+    // identifiable a month later in someone's Downloads folder.
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def suffix = variant.buildType.name == 'release' ? '' : '-' + variant.buildType.name
+            outputFileName = "kingsreviews-v${variant.versionName}${suffix}.apk"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
+}

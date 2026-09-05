@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The app's half of the Digital Asset Links handshake. The site answers
+      with the matching statement at /.well-known/assetlinks.json; when both
+      agree, Chrome drops its address bar and the site runs full screen.
+    -->
+    <string name="assetStatements">
+    [{
+        \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+        \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://www.kingsreviews.com\"
+        }
+    }]
+    </string>
+</resources>

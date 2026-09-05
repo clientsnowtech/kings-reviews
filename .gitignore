@@ -47,3 +47,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# android (Trusted Web Activity shell in /android)
+/android/.gradle
+/android/build
+/android/app/build
+/android/local.properties
+# signing: the keystore and its passwords never enter git — lose the keystore
+# and Play cannot take another upload from you
+/android/keystore.properties
+/android/*.keystore
+/android/*.jks

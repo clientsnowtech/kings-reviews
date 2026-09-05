@@ -1,0 +1,12 @@
+// Kings Reviews for Android — a Trusted Web Activity around www.kingsreviews.com.
+//
+// There is no app code to speak of: android-browser-helper opens the site in
+// Chrome, full screen, and the site proves it trusts this package through
+// /.well-known/assetlinks.json. Everything the app does, the website does.
+plugins {
+    id 'com.android.application' version '9.2.1' apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
